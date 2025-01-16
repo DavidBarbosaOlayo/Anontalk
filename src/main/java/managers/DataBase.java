@@ -12,7 +12,7 @@ public class DataBase {
             String dbPath = userHome + File.separator + "UsersDataBase.db";
 
             String url = "jdbc:sqlite:" + dbPath;
-            System.out.println("Conectando a la base de datos en: " + dbPath);
+            System.out.println("Conectando a la base de datos en:  " + dbPath);
             connection = DriverManager.getConnection(url);
         } catch (SQLException e) {
             throw new RuntimeException(e);
