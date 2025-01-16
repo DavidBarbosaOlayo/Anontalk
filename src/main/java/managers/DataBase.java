@@ -23,9 +23,9 @@ public class DataBase {
         if (connection != null) {
             try {
                 connection.close();
-                System.out.println("Conexión con la base de datos cerrada.");
+                System.out.println("Conexión cerrada.");
             } catch (SQLException e) {
-                System.out.println("Error al cerrar la conexión con la base de datos.");
+                System.out.println("Error al cerrar la conexión.");
             }
         } else {
             System.out.println("Sin conexiones activas para cerrar.");

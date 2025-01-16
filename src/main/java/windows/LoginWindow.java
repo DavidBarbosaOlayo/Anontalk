@@ -79,8 +79,7 @@ public class LoginWindow extends Application {
         primaryStage.setOnCloseRequest(e -> db.desconectarDataBase());
         primaryStage.show();
     }
-
-
+    
     public static void main(String[] args) {
         launch(args);
     }
