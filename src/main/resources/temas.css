@@ -1,0 +1,89 @@
+/* Estilo general para la ventana */
+.root {
+    -fx-font-family: "New Courier";
+    -fx-background-color: #f4f4f4; /* Fondo claro */
+    -fx-padding: 20px;
+}
+
+/* Etiquetas (Labels) */
+.label {
+    -fx-text-fill: #333333; /* Texto oscuro */
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+.label2 {
+    -fx-text-fill: #333333; /* Texto oscuro */
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+/* Campos de texto (TextField y PasswordField) */
+.text-field, .password-field {
+    -fx-border-color: #102C54;
+    -fx-border-width: 2px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-padding: 5px;
+    -fx-font-size: 12px;
+    -fx-background-color: #ffffff; /* Fondo blanco */
+}
+
+/* Botones */
+.button {
+    -fx-background-color: #102C54;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 8px 15px;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #102C90;
+}
+
+.button:pressed {
+    -fx-background-color: #102C54;
+}
+
+/* Botón "Registrarse" */
+.button:nth-child(2) {
+    -fx-background-color: #2196F3; /* Azul */
+}
+
+.button:nth-child(2):hover {
+    -fx-background-color: #1e88e5; /* Azul más oscuro */
+}
+
+.button:nth-child(2):pressed {
+    -fx-background-color: #1976d2; /* Azul aún más oscuro */
+}
+
+/* Ventanas de alerta */
+.dialog-pane {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 2px;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+}
+
+.dialog-pane .content {
+    -fx-text-fill: #333333;
+    -fx-font-size: 14px;
+}
+
+/* Estilo del GridPane */
+.grid-pane {
+    -fx-hgap: 15px;
+    -fx-vgap: 15px;
+    -fx-alignment: center;
+}
+.top-bar-label {
+    -fx-background-color: #102C54;
+    -fx-text-fill: white; /* Texto blanco */
+    -fx-font-size: 18px;
+    -fx-padding: 10px;
+    -fx-font-weight: bold;
+    -fx-alignment: center-left;
+}
