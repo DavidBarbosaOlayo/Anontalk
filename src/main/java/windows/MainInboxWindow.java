@@ -10,6 +10,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import managers.Mensaje;
 import managers.PopUpMessages;
@@ -18,6 +19,7 @@ public class MainInboxWindow extends Application {
     private String currentUser;
     private final PopUpMessages pum = new PopUpMessages();
     private final TableView<Mensaje> tablaMensajes = new TableView<>();
+    private final BorderPane mainLayout = new BorderPane(); // Contenedor principal dinámico
 
     public MainInboxWindow(String currentUser) {
         this.currentUser = currentUser;
@@ -67,7 +69,7 @@ public class MainInboxWindow extends Application {
             new LoginWindow().start(new Stage());
         });
 
-        // Layout
+        // Layout superior e inferior
         HBox topBar = new HBox(etBienvenida);
         topBar.setAlignment(Pos.CENTER_LEFT);
         topBar.setPadding(new Insets(10));
@@ -76,7 +78,7 @@ public class MainInboxWindow extends Application {
         bottomBar.setAlignment(Pos.CENTER);
         bottomBar.setPadding(new Insets(10));
 
-        BorderPane mainLayout = new BorderPane();
+        // Establecer layout principal
         mainLayout.setTop(topBar);
         mainLayout.setCenter(tablaMensajes);
         mainLayout.setBottom(bottomBar);
@@ -95,19 +97,92 @@ public class MainInboxWindow extends Application {
         });
     }
 
-
     // Método para configurar la tabla de mensajes
     private void configurarTablaMensajes() {
+        tablaMensajes.getColumns().clear();
+
+        // Columna del remitente
         TableColumn<Mensaje, String> colSender = new TableColumn<>("Remitente");
         colSender.setCellValueFactory(new PropertyValueFactory<>("sender"));
+        colSender.setResizable(false);
+        colSender.setPrefWidth(150);
+        colSender.setReorderable(false);
 
-        TableColumn<Mensaje, String> colContent = new TableColumn<>("Mensaje");
-        colContent.setCellValueFactory(new PropertyValueFactory<>("content"));
+        // Columna dinámica de notificación/mensaje
+        TableColumn<Mensaje, String> colContent = new TableColumn<>("Mensajes");
+        colContent.setCellFactory(param -> new TableCell<>() {
+            private final Button btnAbrir = new Button("Abrir");
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || getTableRow().getItem() == null) {
+                    setGraphic(null);
+                    return;
+                }
+
+                Mensaje mensaje = (Mensaje) getTableRow().getItem();
+
+                btnAbrir.setOnAction(e -> mostrarVistaChat(mensaje));
+                setGraphic(btnAbrir); // Mostrar el botón
+                setText(null); // No mostrar texto
+            }
+        });
+        colContent.setResizable(false);
+        colContent.setPrefWidth(550);
+        colContent.setReorderable(false);
 
         tablaMensajes.getColumns().addAll(colSender, colContent);
         tablaMensajes.setPlaceholder(new Label("No hay mensajes en la bandeja."));
     }
 
-    // Manejar mensajes entrantes
+    // Mostrar la vista de chat
+    private void mostrarVistaChat(Mensaje mensaje) {
+        // Etiquetas para mostrar el mensaje
+        Label lblRemitente = new Label("De: " + mensaje.getSender());
+        lblRemitente.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
+        Label lblMensaje = new Label(mensaje.getContent());
+        lblMensaje.setWrapText(true);
+        lblMensaje.setPadding(new Insets(10));
+        lblMensaje.setStyle("-fx-border-color: lightgray; -fx-border-radius: 5; -fx-padding: 10px;");
+
+        // Campo de texto para la respuesta
+        TextArea txtRespuesta = new TextArea();
+        txtRespuesta.setPromptText("Escribe tu respuesta aquí...");
+        txtRespuesta.setPrefRowCount(4);
+
+        // Botones para enviar y volver
+        Button btnEnviar = new Button("Enviar");
+        btnEnviar.setOnAction(e -> {
+            String respuesta = txtRespuesta.getText().trim();
+            if (!respuesta.isEmpty()) {
+                tcpManager.sendMessage(mensaje.getSender(), DEFAULT_PORT, respuesta);
+                pum.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
+                mostrarVistaBandeja(); // Volver a la bandeja de entrada
+            } else {
+                pum.mostrarAlertaError("Error", "No puedes enviar un mensaje vacío.");
+            }
+        });
+
+        Button btnVolver = new Button("Volver");
+        btnVolver.setOnAction(e -> mostrarVistaBandeja());
+
+        HBox botones = new HBox(10, btnEnviar, btnVolver);
+        botones.setAlignment(Pos.CENTER_RIGHT);
+        botones.setPadding(new Insets(10));
+
+        // Layout del chat
+        VBox chatLayout = new VBox(10, lblRemitente, lblMensaje, txtRespuesta, botones);
+        chatLayout.setPadding(new Insets(10));
+        chatLayout.setAlignment(Pos.TOP_LEFT);
+
+        mainLayout.setCenter(chatLayout); // Cambiar el contenido del centro a la vista de chat
+    }
+
+    // Volver a la bandeja de entrada
+    private void mostrarVistaBandeja() {
+        mainLayout.setCenter(tablaMensajes); // Restaurar la tabla de mensajes
+    }
 }
