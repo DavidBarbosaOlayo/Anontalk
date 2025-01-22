@@ -15,6 +15,8 @@ import javafx.stage.Stage;
 import managers.Mensaje;
 import managers.PopUpMessages;
 
+import java.io.IOException;
+
 public class MainInboxWindow extends Application {
     private String currentUser;
     private final PopUpMessages pum = new PopUpMessages();
@@ -95,7 +97,11 @@ public class MainInboxWindow extends Application {
             tcpManager.stopServer(); // Detener el servidor
             stage.close();
             pum.mostrarAlertaInformativa("Cerrar Sesión", "Has cerrado sesión correctamente.");
-            new LoginWindow().start(new Stage());
+            try {
+                new LoginWindow().start(new Stage());
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
         });
 
         VBox topBar = new VBox(10);
