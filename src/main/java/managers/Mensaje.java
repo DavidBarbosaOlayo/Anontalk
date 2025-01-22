@@ -6,7 +6,7 @@ public class Mensaje {
     private boolean leido;
 
     public Mensaje(String sender, String content) {
-        this.sender = sender;
+        this.sender = sender.substring(1);
         this.content = content;
         this.leido = false; // Inicialmente no leído
     }

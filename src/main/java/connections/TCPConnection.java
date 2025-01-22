@@ -1,6 +1,9 @@
 package connections;
 
+import windows.MainInboxWindow;
+
 import java.io.*;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -23,7 +26,7 @@ public class TCPConnection {
     // Iniciar el servidor en un puerto específico
     public void startServer(int port) {
         try {
-            serverSocket = new ServerSocket(port);
+            serverSocket = new ServerSocket(port, 50, InetAddress.getByName("0.0.0.0"));
             running = true;
             System.out.println("Servidor TCP escuchando en el puerto: " + port);
 

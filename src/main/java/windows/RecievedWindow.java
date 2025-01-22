@@ -15,28 +15,18 @@ import javafx.stage.Stage;
 import managers.Mensaje;
 import managers.PopUpMessages;
 
-public class MainInboxWindow extends Application {
-    private String currentUser;
+public class RecievedWindow {
     private final PopUpMessages pum = new PopUpMessages();
     private final TableView<Mensaje> tablaMensajes = new TableView<>();
     private final BorderPane mainLayout = new BorderPane(); // Contenedor principal dinámico
     private Stage primaryStage;
 
-    public MainInboxWindow(String currentUser) {
-        this.currentUser = currentUser;
-    }
-
-    public String getCurrentUser() {
-        return currentUser;
-    }
 
     private TCPConnection tcpManager = new TCPConnection();
     private static final int DEFAULT_PORT = 1212; // Definir el puerto por defecto
 
-    @Override
-    public void start(Stage stage) throws Exception {
-        primaryStage = stage;
-        stage.setTitle("Bandeja de Entrada  -  Anontalk");
+    public void show(String currentUser, Stage stage) throws Exception {
+        stage.setTitle("Mensajes Recibidos  -  Anontalk");
 
         // Configurar la tabla de mensajes
         configurarTablaMensajes();
@@ -49,23 +39,22 @@ public class MainInboxWindow extends Application {
         etBienvenida.getStyleClass().add("label2");
 
         // Crear el MenuButton para "Bandeja de Entrada"
-        MenuButton bandejaEntrada = new MenuButton("Bandeja de entrada");
-        bandejaEntrada.getStyleClass().add("bandeja");
+        MenuButton mensajesEnviados = new MenuButton("Mensajes enviados");
+        mensajesEnviados.getStyleClass().add("mnsjsenviados");
 
         // Crear el MenuItem para "Mensajes enviados"
-        MenuItem mensajesEnviados = new MenuItem("Mensajes enviados");
-        mensajesEnviados.setOnAction(actionEvent -> mostrarMensajesEnviados());
+        MenuItem bandejaDeEntrada = new MenuItem("Bandeja de entrada");
+        bandejaDeEntrada.setOnAction(actionEvent -> mostrarBandejadeEntrada());
 
         // Añadir el MenuItem al MenuButton
-        bandejaEntrada.getItems().add(mensajesEnviados);
+        mensajesEnviados.getItems().add(bandejaDeEntrada);
 
-
-        mensajesEnviados.setOnAction(actionEvent -> {
-            RecievedWindow recievedWindow = new RecievedWindow();
+        bandejaDeEntrada.setOnAction(actionEvent -> {
+            MainInboxWindow mainInboxWindow = new MainInboxWindow(currentUser);
             try {
-                recievedWindow.show(currentUser, primaryStage); // Utilitzar el mateix Stage
+                mainInboxWindow.start(stage); // Reutilitzar el Stage existent
             } catch (Exception e) {
-                pum.mostrarAlertaError("Error", "No s'ha pogut obrir la finestra de Missatges Rebuts.");
+                pum.mostrarAlertaError("Error", "No s'ha pogut obrir la Bandeja de Entrada.");
                 e.printStackTrace();
             }
         });
@@ -105,7 +94,7 @@ public class MainInboxWindow extends Application {
         topLeftBar.setAlignment(Pos.CENTER_LEFT);
         topBar.getChildren().add(topLeftBar);
 
-        HBox centerBar = new HBox(bandejaEntrada);
+        HBox centerBar = new HBox(mensajesEnviados);
         centerBar.setAlignment(Pos.CENTER);
         topBar.getChildren().add(centerBar);
 
@@ -126,9 +115,11 @@ public class MainInboxWindow extends Application {
     }
 
     // Mostrar los mensajes enviados en una nueva ventana
-    private void mostrarMensajesEnviados() {
+    private void mostrarBandejadeEntrada() {
         // Aquí puedes implementar la lógica para mostrar los mensajes enviados en una nueva ventana
-        System.out.println("Mostrando mensajes enviados...");
+        System.out.println("Mostrando bandeja de entrada...");
+
+
     }
 
     // Manejar mensajes entrantes
@@ -152,7 +143,7 @@ public class MainInboxWindow extends Application {
         // Columna dinámica de notificación/mensaje
         TableColumn<Mensaje, String> colContent = new TableColumn<>("Mensajes");
         colContent.setCellFactory(param -> new TableCell<Mensaje, String>() {
-            private final Button btnAbrir = new Button("Has recibido un nuevo mensaje, entra para leerlo.");
+            private final Button btnAbrir = new Button("Mensajes enviados, entra para leerlo.");
 
             @Override
             protected void updateItem(String item, boolean empty) {

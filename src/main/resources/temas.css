@@ -87,3 +87,39 @@
     -fx-font-weight: bold;
     -fx-alignment: center-left;
 }
+
+.btn-abrir{
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-cursor: hand;
+    -fx-text-fill: #333333;
+    -fx-padding: 0;
+}
+
+.btn-abrir:hover {
+    -fx-background-color: rgba(200, 200, 200, 0.3);
+        -fx-text-fill: #333333;
+}
+
+.btn-abrir:pressed {
+    -fx-text-fill: #003f7f;
+}
+
+.lblremitente{
+    -fx-font-weight: bold;
+    -fx-font-size: 18px;
+    margin-left: 60px
+    margin-top: 200px
+}
+
+.lblmensaje{
+    -fx-font-size: 14px;
+    margin-left: 100px;
+    -fx-background-color: rgba(200, 200, 200, 0.3);
+    padding: 10px;
+
+}
+
+.txtrespuesta{
+    margin-bottom
+}
