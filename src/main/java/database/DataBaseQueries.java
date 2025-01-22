@@ -1,38 +1,13 @@
-package managers;
+package database;
 
-import java.io.File;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
-public class DataBase {
-    private Connection connection;
+public class DataBaseQueries {
 
-    public void conectarDataBase() {
-        try {
-            String userHome = System.getProperty("user.home");
-            String dbPath = userHome + File.separator + "UsersDataBase.db";
-
-            String url = "jdbc:sqlite:" + dbPath;
-            System.out.println("Conectando a la base de datos en:  " + dbPath);
-            connection = DriverManager.getConnection(url);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void desconectarDataBase() {
-        if (connection != null) {
-            try {
-                connection.close();
-                System.out.println("Conexión cerrada.");
-            } catch (SQLException e) {
-                System.out.println("Error al cerrar la conexión.");
-            }
-        } else {
-            System.out.println("Sin conexiones activas para cerrar.");
-        }
-    }
-
-    public void initTablaUsuarios() {
+    public void crearTablaUsuarios(Connection connection) {
         String sql = "CREATE TABLE IF NOT EXISTS usuarios (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "username TEXT NOT NULL UNIQUE," +
@@ -49,8 +24,7 @@ public class DataBase {
             System.out.println("Error al crear/validar tabla 'usuarios': " + e.getMessage());
         }
     }
-
-    public boolean insertarUsuario(String username, String password) {
+    public boolean insertarUsuario(String username, String password, Connection connection) {
         String sql = "INSERT INTO usuarios (username, password) VALUES (?,?)";
 
         try {
@@ -70,7 +44,7 @@ public class DataBase {
         return false;
     }
 
-    public boolean validarUsuario(String username, String password) {
+    public boolean validarUsuario(String username, String password, Connection connection) {
         String sql = "SELECT * FROM usuarios WHERE username = ? AND password = ?";
         try {
             if (connection != null) {
@@ -88,3 +62,4 @@ public class DataBase {
         return false;
     }
 }
+

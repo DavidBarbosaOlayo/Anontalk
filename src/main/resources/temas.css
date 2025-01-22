@@ -108,15 +108,15 @@
 .lblremitente{
     -fx-font-weight: bold;
     -fx-font-size: 18px;
-    margin-left: 60px
-    margin-top: 200px
+    -fx-margin-left: 60px
+    -fx-margin-top: 200px
 }
 
 .lblmensaje{
     -fx-font-size: 14px;
-    margin-left: 100px;
+    -fx-margin-left: 100px;
     -fx-background-color: rgba(200, 200, 200, 0.3);
-    padding: 10px;
+    -fx-padding: 10px;
 
 }
 

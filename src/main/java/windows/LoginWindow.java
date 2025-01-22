@@ -1,5 +1,6 @@
 package windows;
 
+import database.DataBaseQueries;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -7,18 +8,19 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
-import managers.DataBase;
+import database.DataBase;
 import managers.PopUpMessages;
 
 public class LoginWindow extends Application {
-    private final DataBase db = new DataBase();
     private final PopUpMessages popUpMessages = new PopUpMessages();
+    private final DataBaseQueries dataBaseQueries = new DataBaseQueries();
+    private final DataBase db = new DataBase(dataBaseQueries);
 
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Login - Anontalk");
         db.conectarDataBase();
-        db.initTablaUsuarios();
+        dataBaseQueries.crearTablaUsuarios(db.getConnection());
 
         Label lblUsername = new Label("Usuario:");
         TextField txtUsername = new TextField();
@@ -34,7 +36,7 @@ public class LoginWindow extends Application {
             String password = txtPassword.getText();
             if (username.isEmpty() || password.isEmpty()) {
                 popUpMessages.mostrarAlertaError("Error", "Por favor, completa todos los campos.");
-            } else if (db.validarUsuario(username, password)) {
+            } else if (dataBaseQueries.validarUsuario(username, password, db.getConnection())) {
                 popUpMessages.mostrarAlertaInformativa("Éxito", "Inicio de sesión exitoso. ¡Bienvenido, " + username + "!");
                 primaryStage.close(); // Cerrar la ventana de login
                 try {
@@ -53,7 +55,7 @@ public class LoginWindow extends Application {
             String password = txtPassword.getText();
             if (username.isEmpty() || password.isEmpty()) {
                 popUpMessages.mostrarAlertaError("Error", "Por favor, completa todos los campos.");
-            } else if (db.insertarUsuario(username, password)) {
+            } else if (dataBaseQueries.insertarUsuario(username, password, db.getConnection())) {
                 popUpMessages.mostrarAlertaInformativa("Éxito", "Usuario registrado correctamente.");
             } else {
                 popUpMessages.mostrarAlertaError("Error", "No se pudo registrar el usuario. Es posible que ya exista.");
@@ -79,7 +81,7 @@ public class LoginWindow extends Application {
         primaryStage.setOnCloseRequest(e -> db.desconectarDataBase());
         primaryStage.show();
     }
-    
+
     public static void main(String[] args) {
         launch(args);
     }
