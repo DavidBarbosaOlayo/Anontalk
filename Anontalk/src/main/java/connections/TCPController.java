@@ -84,7 +84,7 @@ public class TCPController {
     // Maneja una conexión entrante: recibe el mensaje cifrado y lo descifra.
     private void handleClient(Socket clientSocket) {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
-            String sender = clientSocket.getInetAddress().toString();
+            String sender = clientSocket.getInetAddress().getHostAddress();
             String encryptedMessage;
             while ((encryptedMessage = in.readLine()) != null) {
                 try {
