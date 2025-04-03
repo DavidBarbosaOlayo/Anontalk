@@ -1,7 +1,6 @@
 package windows;
 
 import connections.TCPController;
-import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -24,17 +23,11 @@ public class RecievedWindow {
     private static final int DEFAULT_PORT = 1212;
     private final TCPController tcpController = TCPController.getInstance(DEFAULT_PORT);
 
-    /**
-     * Ventana que muestra “Mensajes Enviados”.
-     */
     public void show(String currentUser, Stage stage) throws Exception {
         this.primaryStage = stage;
         stage.setTitle("Mensajes Enviados - Anontalk");
 
         configurarTablaMensajes();
-
-        // Si quisieras ver también mensajes entrantes, podrías:
-        // tcpController.addMessageListener(this::handleIncomingMessage);
 
         Label etBienvenida = new Label("Bienvenido, " + currentUser);
         etBienvenida.getStyleClass().add("label2");
@@ -42,7 +35,6 @@ public class RecievedWindow {
         MenuButton menuMensajes = new MenuButton("Mensajes enviados");
         menuMensajes.getStyleClass().add("mnsjsenviados");
 
-        // Para volver a la bandeja de entrada
         MenuItem bandejaDeEntrada = new MenuItem("Bandeja de entrada");
         bandejaDeEntrada.setOnAction(actionEvent -> {
             MainInboxWindow mainInboxWindow = new MainInboxWindow(currentUser);
@@ -55,7 +47,6 @@ public class RecievedWindow {
         });
         menuMensajes.getItems().add(bandejaDeEntrada);
 
-        // Botón para enviar mensaje
         Button btnNuevoMensaje = new Button("Nuevo Mensaje");
         btnNuevoMensaje.setOnAction(e -> {
             TextInputDialog dialog = new TextInputDialog();
@@ -67,17 +58,14 @@ public class RecievedWindow {
                     String[] parts = input.split(":", 2);
                     String host = parts[0];
                     String mensaje = parts[1];
-
                     tcpController.sendMessage(host, DEFAULT_PORT, mensaje);
                     MessageStore.sentMessages.add(new Mensaje("Tú", mensaje));
-
                 } catch (Exception ex) {
                     pum.mostrarAlertaError("Error", "Formato incorrecto. Usa: IP:mensaje");
                 }
             });
         });
 
-        // Botón para cerrar sesión
         Button btnCerrarSesion = new Button("Cerrar Sesión");
         btnCerrarSesion.setOnAction(e -> {
             tcpController.stopServer();
@@ -112,17 +100,6 @@ public class RecievedWindow {
         stage.show();
     }
 
-    // Si quisieras manejar mensajes entrantes aquí también:
-    private void handleIncomingMessage(String sender, String message) {
-        Platform.runLater(() -> {
-            // Podrías guardar en inbox si te interesa
-        });
-    }
-
-    /**
-     * Tabla que muestra la lista de "sentMessages", con un Label clicable
-     * en vez de un botón para mantener el estilo original.
-     */
     private void configurarTablaMensajes() {
         tablaMensajes.getColumns().clear();
 
@@ -141,18 +118,14 @@ public class RecievedWindow {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-
                 if (empty || getTableRow().getItem() == null) {
                     setGraphic(null);
                     setText(null);
                     return;
                 }
-
                 Mensaje mensaje = getTableRow().getItem();
-
                 lblEnviado.getStyleClass().add("lblmensajeEnviado");
                 lblEnviado.setOnMouseClicked(e -> {
-                    // Abre la ventana de chat
                     ChatWindow chatWindow = new ChatWindow(mensaje, tcpController, DEFAULT_PORT, primaryStage);
                     chatWindow.show();
                     primaryStage.close();
@@ -163,8 +136,6 @@ public class RecievedWindow {
         });
 
         tablaMensajes.getColumns().addAll(colSender, colContent);
-
-        // Mostrar la lista de enviados
         tablaMensajes.setItems(MessageStore.sentMessages);
         tablaMensajes.setPlaceholder(new Label("No hay mensajes enviados aún."));
     }

@@ -15,56 +15,59 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class TCPController {
-    // Singleton
+    // Singleton: solo se crea una instancia por nodo.
     private static TCPController instance = null;
-
     private ServerSocket serverSocket;
     private final ExecutorService threadPool;
     private final int port;
-    private volatile boolean running;
+    private volatile boolean running = false;
 
-    // Clave AES para cifrar/descifrar
+    // Clave AES compartida para cifrado/descifrado.
     private SecretKey aesKey;
 
-    // Lista de listeners para notificar a todas las vistas que estén interesadas
-    private final List<TCPConnection.MessageListener> listeners = new CopyOnWriteArrayList<>();
+    // Lista de listeners para notificar la recepción de mensajes.
+    private final List<MessageListener> listeners = new CopyOnWriteArrayList<>();
 
-    // Constructor privado para singleton
-    private TCPController(int port) {
-        this.port = port;
-        // Pool de hilos para manejar las conexiones entrantes
-        this.threadPool = Executors.newCachedThreadPool();
+    public interface MessageListener {
+        void onMessageReceived(String sender, String message);
     }
 
-    // Método estático para obtener la instancia. Carga la clave AES de disco.
+    // Constructor privado.
+    private TCPController(int port) {
+        this.port = port;
+        this.threadPool = Executors.newCachedThreadPool();
+        // Cargar la clave AES de un archivo compartido (asegúrate que ambas máquinas usen el mismo archivo).
+        this.aesKey = AESUtils.loadKey();
+    }
+
+    // Obtención de la instancia (singleton).
     public static TCPController getInstance(int port) {
         if (instance == null) {
             synchronized (TCPController.class) {
                 if (instance == null) {
                     instance = new TCPController(port);
-                    // Cargar la clave AES (asegúrate de que exista aes.key)
-                    // Si no existe, se puede crear en el arranque de la app con AESUtils.createAndStoreKeyIfNotExist()
-                    instance.aesKey = AESUtils.loadKey();
                 }
             }
         }
         return instance;
     }
 
-    // Iniciar el servidor TCP
+    // Inicia el servidor si no está ya en ejecución.
     public void startServer() {
+        if (running) {
+            System.out.println("Servidor ya iniciado.");
+            return;
+        }
         try {
             serverSocket = new ServerSocket(port, 50, InetAddress.getByName("0.0.0.0"));
             running = true;
             System.out.println("Servidor TCP escuchando en el puerto: " + port);
-
-            // Hilo encargado de aceptar conexiones de forma continua
+            // Hilo para aceptar conexiones de forma continua.
             threadPool.execute(() -> {
                 while (running) {
                     try {
                         Socket clientSocket = serverSocket.accept();
                         System.out.println("Conexión entrante de: " + clientSocket.getInetAddress());
-                        // Cada conexión se maneja en su propio hilo del pool
                         threadPool.execute(() -> handleClient(clientSocket));
                     } catch (IOException e) {
                         if (running) {
@@ -78,19 +81,16 @@ public class TCPController {
         }
     }
 
-    // Manejar una conexión de cliente
+    // Maneja una conexión entrante: recibe el mensaje cifrado y lo descifra.
     private void handleClient(Socket clientSocket) {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
             String sender = clientSocket.getInetAddress().toString();
             String encryptedMessage;
             while ((encryptedMessage = in.readLine()) != null) {
                 try {
-                    // Descifrar el contenido antes de notificar a los listeners
                     String decryptedMessage = AESUtils.decrypt(encryptedMessage, aesKey);
                     System.out.println("Mensaje recibido (descifrado): " + decryptedMessage);
-
-                    // Notificar a todos los listeners registrados con el mensaje en claro
-                    for (TCPConnection.MessageListener listener : listeners) {
+                    for (MessageListener listener : listeners) {
                         listener.onMessageReceived(sender, decryptedMessage);
                     }
                 } catch (Exception e) {
@@ -102,7 +102,7 @@ public class TCPController {
         }
     }
 
-    // Detener el servidor y liberar recursos
+    // Detiene el servidor y libera recursos.
     public void stopServer() {
         running = false;
         try {
@@ -116,23 +116,18 @@ public class TCPController {
         threadPool.shutdown();
     }
 
-    public void addMessageListener(TCPConnection.MessageListener listener) {
+    // Registra un listener para recibir notificaciones cuando llegue un mensaje.
+    public void addMessageListener(MessageListener listener) {
         listeners.add(listener);
     }
 
-    public void removeMessageListener(TCPConnection.MessageListener listener) {
-        listeners.remove(listener);
-    }
-
-    // Enviar un mensaje a otro usuario (cifrado con AES)
+    // Envía un mensaje cifrado a otro usuario.
     public void sendMessage(String host, int port, String message) {
         try {
-            // Cifrar antes de enviar
+            // Cifrar el mensaje.
             String encryptedMessage = AESUtils.encrypt(message, aesKey);
-
             try (Socket socket = new Socket(host, port);
                  PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
-
                 out.println(encryptedMessage);
                 System.out.println("Mensaje enviado (cifrado) a " + host + ":" + port + " -> " + message);
             }

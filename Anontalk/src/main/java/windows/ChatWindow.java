@@ -15,9 +15,11 @@ import managers.PopUpMessages;
 import java.time.LocalDateTime;
 
 public class ChatWindow {
+    private static final int DEFAULT_PORT = 1212;
     private final Mensaje mensaje;
     private final int port;
     private final PopUpMessages pum = new PopUpMessages();
+    // Se asume que se usa siempre la misma instancia de TCPController.
     private final TCPController tcpController;
     private final Stage parentStage;
 
@@ -32,11 +34,11 @@ public class ChatWindow {
         Stage chatStage = new Stage();
         chatStage.setTitle("Chat con " + mensaje.getSender());
 
-        // Encabezado: muestra remitente y fecha (puedes personalizar la fecha según corresponda)
+        // Encabezado: muestra remitente y fecha.
         Label lblHeader = new Label("De: " + mensaje.getSender() + "  |  Fecha: " + LocalDateTime.now());
         lblHeader.getStyleClass().add("chat-header");
 
-        // Área de lectura del mensaje dentro de un ScrollPane
+        // Área de lectura del mensaje.
         Label lblMensaje = new Label(mensaje.getContent());
         lblMensaje.setWrapText(true);
         lblMensaje.getStyleClass().add("chat-message-body");
@@ -45,17 +47,16 @@ public class ChatWindow {
         scrollMessage.setFitToWidth(true);
         scrollMessage.getStyleClass().add("chat-scrollpane");
 
-        // Área de redacción del mensaje con barra de herramientas
+        // Área de redacción del mensaje.
         TextArea txtRespuesta = new TextArea();
         txtRespuesta.setPromptText("Redacta tu respuesta...");
         txtRespuesta.setPrefRowCount(4);
         txtRespuesta.getStyleClass().add("chat-textarea");
 
-        // Barra de herramientas simple (por ejemplo, para insertar negrita)
+        // Barra de herramientas (ejemplo: botón para negrita).
         HBox toolbar = new HBox(10);
         Button btnBold = new Button("B");
         btnBold.setOnAction(e -> {
-            // Esto es solo un ejemplo; aquí podrías implementar la inserción de formato
             txtRespuesta.appendText(" **Texto en negrita** ");
         });
         toolbar.getChildren().add(btnBold);
@@ -66,11 +67,12 @@ public class ChatWindow {
         composeArea.setPadding(new Insets(10));
         composeArea.getStyleClass().add("chat-compose-area");
 
-        // Botones de acción
+        // Botones de acción.
         Button btnEnviar = new Button("Enviar");
         btnEnviar.setOnAction(e -> {
             String respuesta = txtRespuesta.getText().trim();
             if (!respuesta.isEmpty()) {
+                // Se envía el mensaje cifrado usando TCPController.
                 tcpController.sendMessage(mensaje.getSender(), port, respuesta);
                 MessageStore.sentMessages.add(new Mensaje("Tú", respuesta));
                 pum.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
@@ -91,7 +93,6 @@ public class ChatWindow {
         buttonBar.setAlignment(Pos.CENTER_RIGHT);
         buttonBar.setPadding(new Insets(10));
 
-        // Layout principal usando BorderPane
         BorderPane chatLayout = new BorderPane();
         chatLayout.setTop(lblHeader);
         chatLayout.setCenter(scrollMessage);

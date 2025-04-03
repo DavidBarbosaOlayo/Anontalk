@@ -24,9 +24,9 @@ public class MainInboxWindow extends Application {
     private Stage primaryStage;
 
     private static final int DEFAULT_PORT = 1212;
-    // Singleton TCP
+    // Se obtiene la instancia única de TCPController.
     private final TCPController tcpController = TCPController.getInstance(DEFAULT_PORT);
-    // Variable para asegurar que el listener se registre solo una vez
+    // Para evitar el registro múltiple del listener.
     private static boolean listenerRegistrado = false;
 
     public MainInboxWindow(String currentUser) {
@@ -40,16 +40,15 @@ public class MainInboxWindow extends Application {
 
         configurarTablaMensajes();
 
-        // Iniciar el servidor si no está corriendo
+        // Iniciar el servidor si aún no está corriendo.
         tcpController.startServer();
 
-        // Registrar el listener solo una vez
+        // Registrar el listener solo una vez.
         if (!listenerRegistrado) {
             tcpController.addMessageListener(this::handleIncomingMessage);
             listenerRegistrado = true;
         }
 
-        // Resto del código para configurar la ventana...
         Label etBienvenida = new Label("Bienvenido, " + currentUser);
         etBienvenida.getStyleClass().add("label2");
 
@@ -172,4 +171,3 @@ public class MainInboxWindow extends Application {
         tablaMensajes.setPlaceholder(new Label("No hay mensajes en la bandeja."));
     }
 }
-
