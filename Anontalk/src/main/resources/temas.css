@@ -1,0 +1,73 @@
+/* Fuente y fondo general */
+.root, .chat-root {
+    -fx-font-family: "Roboto", "Segoe UI", sans-serif;
+    -fx-background-color: #f4f4f4;
+}
+
+/* Encabezado del chat */
+.chat-header {
+    -fx-background-color: #f1f3f4;
+    -fx-text-fill: #202124;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-padding: 15px;
+    -fx-border-color: #dadce0;
+    -fx-border-width: 0 0 1px 0;
+}
+
+/* Área del mensaje */
+.chat-message-body {
+    -fx-font-size: 14px;
+    -fx-padding: 10px;
+    -fx-text-fill: #202124;
+}
+
+/* ScrollPane para el mensaje (sin fondo para lograr efecto "limpio") */
+.chat-scrollpane {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+
+/* Área de composición del mensaje */
+.chat-compose-area {
+    -fx-background-color: #f1f3f4;
+    -fx-padding: 10px;
+    -fx-border-color: #dadce0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+}
+
+/* TextArea para redactar el mensaje */
+.chat-textarea {
+    -fx-font-size: 14px;
+    -fx-border-color: #dadce0;
+    -fx-border-radius: 5px;
+    -fx-padding: 10px;
+}
+
+/* Barra de herramientas en el área de redacción */
+.chat-toolbar {
+    -fx-background-color: #ffffff;
+    -fx-padding: 5px;
+    -fx-border-color: #dadce0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+}
+
+/* Botones: puedes mantener o ajustar los estilos generales ya definidos */
+.button {
+    -fx-background-color: #102C54;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 8px 15px;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #102C90;
+}
+
+.button:pressed {
+    -fx-background-color: #102C54;
+}
