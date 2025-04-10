@@ -2,6 +2,7 @@ package windows;
 
 import database.DataBaseQueries;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -10,10 +11,13 @@ import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 import database.DataBase;
 import managers.PopUpMessages;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import security.AESUtils;
 
 import javax.crypto.SecretKey;
 
+@SpringBootApplication
 public class LoginWindow extends Application {
     private final PopUpMessages popUpMessages = new PopUpMessages();
     private final DataBaseQueries dataBaseQueries = new DataBaseQueries();
@@ -90,6 +94,7 @@ public class LoginWindow extends Application {
     }
 
     public static void main(String[] args) {
+        new Thread(() -> SpringApplication.run(LoginWindow.class, args)).start();
         launch(args);
     }
 }
