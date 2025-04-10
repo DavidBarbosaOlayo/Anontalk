@@ -40,7 +40,6 @@ public class AESUtils {
         return new String(decrypted, "UTF-8");
     }
 
-    // Ej. método para crear la clave una sola vez y guardarla
     public static void createAndStoreKeyIfNotExist() {
         try {
             File f = new File("aes.key");
@@ -56,7 +55,6 @@ public class AESUtils {
         }
     }
 
-    // Ej. método para cargar la clave en memoria
     public static SecretKey loadKey() {
         try {
             File f = new File("aes.key");
