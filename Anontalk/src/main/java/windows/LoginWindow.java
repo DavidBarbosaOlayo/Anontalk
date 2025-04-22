@@ -12,12 +12,17 @@ import database.DataBase;
 import managers.PopUpMessages;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import security.AESUtils;
 
 import javax.crypto.SecretKey;
 
-@SpringBootApplication
-public class LoginWindow extends Application {
+@SpringBootApplication(
+        scanBasePackages = {"windows", "managers", "database"}
+)
+@EnableJpaRepositories(basePackages = "managers")
+@EntityScan(basePackages = "managers")public class LoginWindow extends Application {
     private final PopUpMessages popUpMessages = new PopUpMessages();
     private final DataBaseQueries dataBaseQueries = new DataBaseQueries();
     private final DataBase db = new DataBase(dataBaseQueries);

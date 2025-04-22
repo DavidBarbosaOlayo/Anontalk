@@ -2,7 +2,10 @@ package managers;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 public interface MensajeRepository extends JpaRepository<MensajeSB, Long> {
-    // Puedes añadir métodos personalizados si quieres buscar por remitente o destinatario
+    List<MensajeSB> findByDestinatario(String destinatario);
+    List<MensajeSB> findByRemitente(String remitente);
 }
 
