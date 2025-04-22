@@ -1,7 +1,5 @@
 package managers;
 
-import managers.MensajeDTO;
-import managers.MensajeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,5 +28,11 @@ public class MensajesController {
     @GetMapping("/sent/{remitente}")
     public ResponseEntity<List<MensajeDTO>> getSent(@PathVariable String remitente) {
         return ResponseEntity.ok(mensajeService.getSent(remitente));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMessage(@PathVariable Long id) {
+        mensajeService.deleteMessage(id);
+        return ResponseEntity.noContent().build();
     }
 }

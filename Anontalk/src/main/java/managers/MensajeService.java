@@ -67,4 +67,8 @@ public class MensajeService {
             }
         }).collect(Collectors.toList());
     }
+
+    public void deleteMessage(Long id) {
+        repo.deleteById(id);
+    }
 }
