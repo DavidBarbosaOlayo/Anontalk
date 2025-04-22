@@ -1,4 +1,4 @@
-package managers;
+package managers.mensajes;
 
 public class Mensaje {
     private Long id;

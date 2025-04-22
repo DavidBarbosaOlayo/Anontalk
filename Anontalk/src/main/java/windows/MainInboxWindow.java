@@ -15,10 +15,10 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import managers.MessageStore;
-import managers.Mensaje;
-import managers.PopUpMessages;
-import managers.MensajeDTO;
+import managers.mensajes.MessageStore;
+import managers.mensajes.Mensaje;
+import managers.PopUpInfo;
+import managers.mensajes.MensajeDTO;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,7 +33,7 @@ import java.util.List;
 
 public class MainInboxWindow extends Application {
     private final String currentUser;
-    private final PopUpMessages pum = new PopUpMessages();
+    private final PopUpInfo pum = new PopUpInfo();
     private Stage primaryStage;
 
     private final HttpClient httpClient;

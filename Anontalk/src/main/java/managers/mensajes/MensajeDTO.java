@@ -1,4 +1,4 @@
-package managers;
+package managers.mensajes;
 
 import java.time.LocalDateTime;
 

@@ -1,4 +1,4 @@
-package managers;
+package managers.mensajes;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

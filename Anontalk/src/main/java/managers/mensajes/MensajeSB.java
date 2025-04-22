@@ -1,4 +1,4 @@
-package managers;
+package managers.mensajes;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;

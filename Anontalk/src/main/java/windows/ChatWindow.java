@@ -9,10 +9,10 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import managers.MessageStore;
-import managers.Mensaje;
-import managers.PopUpMessages;
-import managers.MensajeDTO;
+import managers.mensajes.MessageStore;
+import managers.mensajes.Mensaje;
+import managers.PopUpInfo;
+import managers.mensajes.MensajeDTO;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
 public class ChatWindow {
     private final String currentUser;
     private final Mensaje mensaje;
-    private final PopUpMessages pum = new PopUpMessages();
+    private final PopUpInfo pum = new PopUpInfo();
 
     private final HttpClient httpClient;
     private final ObjectMapper mapper;

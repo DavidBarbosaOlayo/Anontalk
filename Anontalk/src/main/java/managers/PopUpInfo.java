@@ -2,7 +2,7 @@ package managers;
 
 import javafx.scene.control.Alert;
 
-public class PopUpMessages {
+public class PopUpInfo {
 
     public void mostrarAlertaInformativa(String titulo, String mensaje) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);

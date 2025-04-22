@@ -1,7 +1,5 @@
 package windows;
 
-import database.DataBase;
-import database.DataBaseQueries;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -10,94 +8,130 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
-import managers.PopUpMessages;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import managers.PopUpInfo;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import security.AESUtils;
 
-import javax.crypto.SecretKey;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 @SpringBootApplication(
-        scanBasePackages = {"windows","managers","database"}
+        scanBasePackages = {
+                "windows",                // tu UI JavaFX
+                "managers.mensajes",      // mensajes: entidad, repo, service
+                "managers.users"          // usuarios: User, UserRepo, UserService
+        }
 )
-@EnableJpaRepositories(basePackages = "managers")
-@EntityScan(basePackages = "managers")
+@EnableJpaRepositories(basePackages = {
+        "managers.mensajes",      // JPA repositorio de mensajes
+        "managers.users"          // JPA repositorio de usuarios
+})
+@EntityScan(basePackages = {
+        "managers.mensajes",      // entidades de mensajes
+        "managers.users"          // entidades de usuarios
+})
 public class LoginWindow extends Application {
     private static ConfigurableApplicationContext springContext;
-    private final PopUpMessages popUpMessages = new PopUpMessages();
-    private final DataBaseQueries dataBaseQueries = new DataBaseQueries();
-    private final DataBase db = new DataBase(dataBaseQueries);
+    private final PopUpInfo popUp = new PopUpInfo();
+    private final HttpClient client = HttpClient.newHttpClient();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public static void main(String[] args) {
-        // Arrancamos Spring y guardamos el contexto
+        // 1) Arrancamos Spring Boot (crea tablas en PostgreSQL/Render)
         springContext = SpringApplication.run(LoginWindow.class, args);
-        // Luego lanzamos JavaFX
+        // 2) Luego lanzamos JavaFX
         launch(args);
     }
 
     @Override
     public void start(Stage primaryStage) {
-        // Al cerrar la ventana de login, detenemos todo
+        primaryStage.setTitle("Login - Anontalk");
+
+        // Al cerrar la ventana: detenemos Spring y salimos
         primaryStage.setOnCloseRequest(e -> {
-            db.desconectarDataBase();
-            // Cerramos Spring
             springContext.close();
-            // Cerramos JavaFX y la JVM
             Platform.exit();
             System.exit(0);
         });
 
-        AESUtils.createAndStoreKeyIfNotExist();
-        SecretKey appAESKey = AESUtils.loadKey();
-
-        primaryStage.setTitle("Login - Anontalk");
-        db.conectarDataBase();
-        dataBaseQueries.crearTablaUsuarios(db.getConnection());
-
-        Label lblUsername = new Label("Usuario:");
-        TextField txtUsername = new TextField();
-
-        Label lblPassword = new Label("Contraseña:");
-        PasswordField txtPassword = new PasswordField();
+        Label lblUser = new Label("Usuario:");
+        TextField txtUser = new TextField();
+        Label lblPwd = new Label("Contraseña:");
+        PasswordField txtPwd = new PasswordField();
 
         Button btnLogin = new Button("Iniciar Sesión");
-        Button btnRegister = new Button("Registrarse");
+        Button btnReg   = new Button("Registrarse");
 
         btnLogin.setOnAction(e -> {
-            String username = txtUsername.getText();
-            String password = txtPassword.getText();
-            if (username.isEmpty() || password.isEmpty()) {
-                popUpMessages.mostrarAlertaError("Error", "Por favor, completa todos los campos.");
-            } else if (dataBaseQueries.validarUsuario(username, password, db.getConnection())) {
-                popUpMessages.mostrarAlertaInformativa(
-                        "Éxito", "Inicio de sesión exitoso. ¡Bienvenido, " + username + "!"
-                );
-                primaryStage.close();
-                try {
-                    new MainInboxWindow(username).start(new Stage());
-                } catch (Exception ex) {
-                    throw new RuntimeException(ex);
-                }
-            } else {
-                popUpMessages.mostrarAlertaError("Error", "Usuario o contraseña incorrectos.");
+            if (txtUser.getText().isBlank() || txtPwd.getText().isBlank()) {
+                popUp.mostrarAlertaError("Error", "Completa todos los campos");
+                return;
             }
+            ObjectNode body = mapper.createObjectNode()
+                    .put("username", txtUser.getText().trim())
+                    .put("password", txtPwd.getText());
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8080/api/users/login"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
+                    .build();
+
+            client.sendAsync(req, HttpResponse.BodyHandlers.discarding())
+                    .thenAccept(resp -> {
+                        if (resp.statusCode() == 200) {
+                            Platform.runLater(() -> {
+                                popUp.mostrarAlertaInformativa("Éxito", "Bienvenido, " + txtUser.getText());
+                                primaryStage.close();
+                                try {
+                                    new MainInboxWindow(txtUser.getText().trim()).start(new Stage());
+                                } catch (Exception ex) {
+                                    ex.printStackTrace();
+                                }
+                            });
+                        } else {
+                            Platform.runLater(() ->
+                                    popUp.mostrarAlertaError("Error", "Usuario o contraseña incorrectos")
+                            );
+                        }
+                    });
         });
 
-        btnRegister.setOnAction(e -> {
-            String username = txtUsername.getText();
-            String password = txtPassword.getText();
-            if (username.isEmpty() || password.isEmpty()) {
-                popUpMessages.mostrarAlertaError("Error", "Por favor, completa todos los campos.");
-            } else if (dataBaseQueries.insertarUsuario(username, password, db.getConnection())) {
-                popUpMessages.mostrarAlertaInformativa("Éxito", "Usuario registrado correctamente.");
-            } else {
-                popUpMessages.mostrarAlertaError(
-                        "Error", "No se pudo registrar el usuario. Es posible que ya exista."
-                );
+        btnReg.setOnAction(e -> {
+            if (txtUser.getText().isBlank() || txtPwd.getText().isBlank()) {
+                popUp.mostrarAlertaError("Error", "Completa todos los campos");
+                return;
             }
+            ObjectNode body = mapper.createObjectNode()
+                    .put("username", txtUser.getText().trim())
+                    .put("password", txtPwd.getText());
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8080/api/users/register"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
+                    .build();
+
+            client.sendAsync(req, HttpResponse.BodyHandlers.discarding())
+                    .thenAccept(resp -> {
+                        if (resp.statusCode() == 200) {
+                            Platform.runLater(() ->
+                                    popUp.mostrarAlertaInformativa("Éxito", "Usuario registrado")
+                            );
+                        } else {
+                            Platform.runLater(() ->
+                                    popUp.mostrarAlertaError("Error", "El usuario ya existe")
+                            );
+                        }
+                    });
         });
 
         GridPane grid = new GridPane();
@@ -105,19 +139,16 @@ public class LoginWindow extends Application {
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
-
-        grid.add(lblUsername, 0, 0);
-        grid.add(txtUsername, 1, 0);
-        grid.add(lblPassword, 0, 1);
-        grid.add(txtPassword, 1, 1);
+        grid.add(lblUser, 0, 0);
+        grid.add(txtUser, 1, 0);
+        grid.add(lblPwd, 0, 1);
+        grid.add(txtPwd, 1, 1);
         grid.add(btnLogin, 0, 2);
-        grid.add(btnRegister, 1, 2);
+        grid.add(btnReg,   1, 2);
 
-        Scene scene = new Scene(grid, 400, 250);
-        scene.getStylesheets().add(
-                getClass().getResource("/temas.css").toExternalForm()
-        );
-        primaryStage.setScene(scene);
+        Scene sc = new Scene(grid, 400, 250);
+        sc.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
+        primaryStage.setScene(sc);
         primaryStage.show();
     }
 }

@@ -1,4 +1,4 @@
-package managers;
+package managers.mensajes;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
