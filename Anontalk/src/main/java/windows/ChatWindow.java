@@ -1,4 +1,3 @@
-// ChatWindow.java
 package windows;
 
 import javafx.application.Platform;
@@ -30,104 +29,98 @@ public class ChatWindow {
     private final Mensaje mensaje;
     private final PopUpMessages pum = new PopUpMessages();
 
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient;
     private final ObjectMapper mapper;
 
     public ChatWindow(String currentUser, Mensaje mensaje) {
         this.currentUser = currentUser;
         this.mensaje = mensaje;
-        mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        this.httpClient = HttpClient.newHttpClient();
+        this.mapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
     public void show() {
         Stage chatStage = new Stage();
         chatStage.setTitle("Chat con " + mensaje.getSender());
 
-        Label hdr = new Label("De: " + mensaje.getSender() + "  |  Fecha: " + LocalDateTime.now());
-        hdr.getStyleClass().add("chat-header");
+        Label lblHeader = new Label(
+                "De: " + mensaje.getSender() + "  |  Fecha: " + LocalDateTime.now()
+        );
+        lblHeader.getStyleClass().add("chat-header");
 
-        Label body = new Label(mensaje.getContent());
-        body.setWrapText(true);
-        body.getStyleClass().add("chat-message-body");
-        ScrollPane sp = new ScrollPane(body);
-        sp.setFitToWidth(true);
+        Label lblBody = new Label(mensaje.getContent());
+        lblBody.setWrapText(true);
+        lblBody.getStyleClass().add("chat-message-body");
+        ScrollPane scroll = new ScrollPane(lblBody);
+        scroll.setFitToWidth(true);
 
-        TextArea reply = new TextArea();
-        reply.setPromptText("Redacta tu respuesta...");
-        reply.setPrefRowCount(4);
-        reply.getStyleClass().add("chat-textarea");
+        TextArea txtReply = new TextArea();
+        txtReply.setPromptText("Redacta tu respuesta...");
+        txtReply.setPrefRowCount(4);
+        txtReply.getStyleClass().add("chat-textarea");
 
-        HBox toolbar = new HBox(10, new Button("B") {{
-            setOnAction(e -> reply.appendText(" **Texto en negrita** "));
-        }});
+        Button btnBold = new Button("B");
+        btnBold.setOnAction(e -> txtReply.appendText(" **Texto en negrita** "));
+        HBox toolbar = new HBox(10, btnBold);
         toolbar.setAlignment(Pos.CENTER_LEFT);
         toolbar.getStyleClass().add("chat-toolbar");
 
-        VBox compose = new VBox(5, toolbar, reply);
-        compose.setPadding(new Insets(10));
+        VBox composeArea = new VBox(5, toolbar, txtReply);
+        composeArea.setPadding(new Insets(10));
+        composeArea.getStyleClass().add("chat-compose-area");
 
         Button btnEnviar = new Button("Enviar");
         btnEnviar.setOnAction(e -> {
-            String resp = reply.getText().trim();
-            if (resp.isEmpty()) {
+            String respuesta = txtReply.getText().trim();
+            if (respuesta.isEmpty()) {
                 pum.mostrarAlertaError("Error", "No puedes enviar un mensaje vacío.");
                 return;
             }
-            // 1) Persistir en BD vía API
-            sendViaApi(currentUser, mensaje.getSender(), resp);
-            // 2) Poner en UI local
-            MessageStore.sentMessages.add(new Mensaje(mensaje.getSender(), resp));
-
-            pum.mostrarAlertaInformativa("Mensaje enviado", "Se ha guardado en la base de datos.");
+            // Persistir vía API REST
+            MensajeDTO dto = new MensajeDTO();
+            dto.setRemitente(currentUser);
+            dto.setDestinatario(mensaje.getSender());
+            dto.setMensaje(respuesta);
+            try {
+                String json = mapper.writeValueAsString(dto);
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(new URI("http://localhost:8080/api/messages/send"))
+                        .header("Content-Type","application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(json))
+                        .build();
+                httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString());
+            } catch (Exception ex) {
+                Platform.runLater(() -> pum.mostrarAlertaError(
+                        "Error", "No se pudo guardar el mensaje en la base de datos."
+                ));
+            }
+            // Actualizar UI local
+            MessageStore.sentMessages.add(new Mensaje(mensaje.getSender(), respuesta));
+            pum.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
             chatStage.close();
         });
 
         Button btnCerrar = new Button("Cerrar");
         btnCerrar.setOnAction(e -> chatStage.close());
 
-        HBox btnBar = new HBox(10, btnEnviar, btnCerrar);
-        btnBar.setAlignment(Pos.CENTER_RIGHT);
-        btnBar.setPadding(new Insets(10));
+        HBox buttonBar = new HBox(10, btnEnviar, btnCerrar);
+        buttonBar.setAlignment(Pos.CENTER_RIGHT);
+        buttonBar.setPadding(new Insets(10));
 
         BorderPane layout = new BorderPane();
-        layout.setTop(hdr);
-        layout.setCenter(sp);
-        layout.setBottom(new VBox(compose, btnBar));
+        layout.setTop(lblHeader);
+        layout.setCenter(scroll);
+        layout.setBottom(new VBox(composeArea, buttonBar));
         layout.setPadding(new Insets(10));
+        layout.getStyleClass().add("chat-root");
 
-        Scene sc = new Scene(layout, 800, 600);
-        sc.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
-        chatStage.setScene(sc);
+        Scene scene = new Scene(layout, 800, 600);
+        scene.getStylesheets().add(
+                getClass().getResource("/temas.css").toExternalForm()
+        );
+        chatStage.setScene(scene);
         chatStage.show();
-    }
-
-    private void sendViaApi(String remitente, String destinatario, String texto) {
-        try {
-            MensajeDTO dto = new MensajeDTO();
-            dto.setRemitente(remitente);
-            dto.setDestinatario(destinatario);
-            dto.setMensaje(texto);
-            String json = mapper.writeValueAsString(dto);
-
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(new URI("http://localhost:8080/api/messages/send"))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
-                    .build();
-
-            httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(r -> {
-                        if (r.statusCode() != 200) {
-                            Platform.runLater(() ->
-                                    pum.mostrarAlertaError("Error", "No se pudo guardar en la BD.")
-                            );
-                        }
-                    });
-        } catch (Exception e) {
-            e.printStackTrace();
-            pum.mostrarAlertaError("Error", "Fallo al guardar el mensaje.");
-        }
     }
 }

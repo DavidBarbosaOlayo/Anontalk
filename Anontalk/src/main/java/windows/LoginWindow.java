@@ -1,35 +1,55 @@
 package windows;
 
+import database.DataBase;
 import database.DataBaseQueries;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
-import database.DataBase;
 import managers.PopUpMessages;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import security.AESUtils;
 
 import javax.crypto.SecretKey;
 
 @SpringBootApplication(
-        scanBasePackages = {"windows", "managers", "database"}
+        scanBasePackages = {"windows","managers","database"}
 )
 @EnableJpaRepositories(basePackages = "managers")
-@EntityScan(basePackages = "managers")public class LoginWindow extends Application {
+@EntityScan(basePackages = "managers")
+public class LoginWindow extends Application {
+    private static ConfigurableApplicationContext springContext;
     private final PopUpMessages popUpMessages = new PopUpMessages();
     private final DataBaseQueries dataBaseQueries = new DataBaseQueries();
     private final DataBase db = new DataBase(dataBaseQueries);
 
+    public static void main(String[] args) {
+        // Arrancamos Spring y guardamos el contexto
+        springContext = SpringApplication.run(LoginWindow.class, args);
+        // Luego lanzamos JavaFX
+        launch(args);
+    }
+
     @Override
     public void start(Stage primaryStage) {
-        // Al inicio de tu programa (ej. en main)...
+        // Al cerrar la ventana de login, detenemos todo
+        primaryStage.setOnCloseRequest(e -> {
+            db.desconectarDataBase();
+            // Cerramos Spring
+            springContext.close();
+            // Cerramos JavaFX y la JVM
+            Platform.exit();
+            System.exit(0);
+        });
+
         AESUtils.createAndStoreKeyIfNotExist();
         SecretKey appAESKey = AESUtils.loadKey();
 
@@ -52,10 +72,12 @@ import javax.crypto.SecretKey;
             if (username.isEmpty() || password.isEmpty()) {
                 popUpMessages.mostrarAlertaError("Error", "Por favor, completa todos los campos.");
             } else if (dataBaseQueries.validarUsuario(username, password, db.getConnection())) {
-                popUpMessages.mostrarAlertaInformativa("Éxito", "Inicio de sesión exitoso. ¡Bienvenido, " + username + "!");
-                primaryStage.close(); // Cerrar la ventana de login
+                popUpMessages.mostrarAlertaInformativa(
+                        "Éxito", "Inicio de sesión exitoso. ¡Bienvenido, " + username + "!"
+                );
+                primaryStage.close();
                 try {
-                    new MainInboxWindow(username).start(new Stage()); // Abrir la bandeja de entrada
+                    new MainInboxWindow(username).start(new Stage());
                 } catch (Exception ex) {
                     throw new RuntimeException(ex);
                 }
@@ -63,7 +85,6 @@ import javax.crypto.SecretKey;
                 popUpMessages.mostrarAlertaError("Error", "Usuario o contraseña incorrectos.");
             }
         });
-
 
         btnRegister.setOnAction(e -> {
             String username = txtUsername.getText();
@@ -73,7 +94,9 @@ import javax.crypto.SecretKey;
             } else if (dataBaseQueries.insertarUsuario(username, password, db.getConnection())) {
                 popUpMessages.mostrarAlertaInformativa("Éxito", "Usuario registrado correctamente.");
             } else {
-                popUpMessages.mostrarAlertaError("Error", "No se pudo registrar el usuario. Es posible que ya exista.");
+                popUpMessages.mostrarAlertaError(
+                        "Error", "No se pudo registrar el usuario. Es posible que ya exista."
+                );
             }
         });
 
@@ -81,7 +104,7 @@ import javax.crypto.SecretKey;
         grid.setAlignment(Pos.CENTER);
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.setPadding(new Insets(20, 20, 20, 20));
+        grid.setPadding(new Insets(20));
 
         grid.add(lblUsername, 0, 0);
         grid.add(txtUsername, 1, 0);
@@ -91,14 +114,10 @@ import javax.crypto.SecretKey;
         grid.add(btnRegister, 1, 2);
 
         Scene scene = new Scene(grid, 400, 250);
-        scene.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
+        scene.getStylesheets().add(
+                getClass().getResource("/temas.css").toExternalForm()
+        );
         primaryStage.setScene(scene);
-        primaryStage.setOnCloseRequest(e -> db.desconectarDataBase());
         primaryStage.show();
-    }
-
-    public static void main(String[] args) {
-        new Thread(() -> SpringApplication.run(LoginWindow.class, args)).start();
-        launch(args);
     }
 }
