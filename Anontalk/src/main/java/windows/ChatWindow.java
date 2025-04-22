@@ -1,7 +1,6 @@
 // ChatWindow.java
 package windows;
 
-import connections.TCPController;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -27,25 +26,16 @@ import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 
 public class ChatWindow {
-    private static final int DEFAULT_PORT = 1212;
     private final String currentUser;
     private final Mensaje mensaje;
-    private final TCPController tcpController;
-    private final Stage parentStage;
     private final PopUpMessages pum = new PopUpMessages();
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper mapper;
 
-    public ChatWindow(String currentUser,
-                      Mensaje mensaje,
-                      TCPController tcpController,
-                      Stage parentStage) {
+    public ChatWindow(String currentUser, Mensaje mensaje) {
         this.currentUser = currentUser;
         this.mensaje = mensaje;
-        this.tcpController = tcpController;
-        this.parentStage = parentStage;
-
         mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -63,22 +53,20 @@ public class ChatWindow {
         body.getStyleClass().add("chat-message-body");
         ScrollPane sp = new ScrollPane(body);
         sp.setFitToWidth(true);
-        sp.getStyleClass().add("chat-scrollpane");
 
         TextArea reply = new TextArea();
         reply.setPromptText("Redacta tu respuesta...");
         reply.setPrefRowCount(4);
         reply.getStyleClass().add("chat-textarea");
 
-        Button btnBold = new Button("B");
-        btnBold.setOnAction(e -> reply.appendText(" **Texto en negrita** "));
-        HBox toolbar = new HBox(10, btnBold);
+        HBox toolbar = new HBox(10, new Button("B") {{
+            setOnAction(e -> reply.appendText(" **Texto en negrita** "));
+        }});
         toolbar.setAlignment(Pos.CENTER_LEFT);
         toolbar.getStyleClass().add("chat-toolbar");
 
         VBox compose = new VBox(5, toolbar, reply);
         compose.setPadding(new Insets(10));
-        compose.getStyleClass().add("chat-compose-area");
 
         Button btnEnviar = new Button("Enviar");
         btnEnviar.setOnAction(e -> {
@@ -87,23 +75,17 @@ public class ChatWindow {
                 pum.mostrarAlertaError("Error", "No puedes enviar un mensaje vacío.");
                 return;
             }
-            // 1) Persistir siempre en BD
-            persistMensaje(currentUser, mensaje.getSender(), resp);
-            // 2) Enviar TCP si está online
-            tcpController.sendMessage(mensaje.getSender(), DEFAULT_PORT, resp);
-            // 3) Añadir a UI local
+            // 1) Persistir en BD vía API
+            sendViaApi(currentUser, mensaje.getSender(), resp);
+            // 2) Poner en UI local
             MessageStore.sentMessages.add(new Mensaje(mensaje.getSender(), resp));
 
-            pum.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
+            pum.mostrarAlertaInformativa("Mensaje enviado", "Se ha guardado en la base de datos.");
             chatStage.close();
-            parentStage.show();
         });
 
         Button btnCerrar = new Button("Cerrar");
-        btnCerrar.setOnAction(e -> {
-            chatStage.close();
-            parentStage.show();
-        });
+        btnCerrar.setOnAction(e -> chatStage.close());
 
         HBox btnBar = new HBox(10, btnEnviar, btnCerrar);
         btnBar.setAlignment(Pos.CENTER_RIGHT);
@@ -114,7 +96,6 @@ public class ChatWindow {
         layout.setCenter(sp);
         layout.setBottom(new VBox(compose, btnBar));
         layout.setPadding(new Insets(10));
-        layout.getStyleClass().add("chat-root");
 
         Scene sc = new Scene(layout, 800, 600);
         sc.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
@@ -122,7 +103,7 @@ public class ChatWindow {
         chatStage.show();
     }
 
-    private void persistMensaje(String remitente, String destinatario, String texto) {
+    private void sendViaApi(String remitente, String destinatario, String texto) {
         try {
             MensajeDTO dto = new MensajeDTO();
             dto.setRemitente(remitente);
@@ -137,16 +118,16 @@ public class ChatWindow {
                     .build();
 
             httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(resp -> {
-                        if (resp.statusCode() != 200) {
+                    .thenAccept(r -> {
+                        if (r.statusCode() != 200) {
                             Platform.runLater(() ->
-                                    pum.mostrarAlertaError("Error","No se guardó el mensaje en base de datos."));
+                                    pum.mostrarAlertaError("Error", "No se pudo guardar en la BD.")
+                            );
                         }
                     });
         } catch (Exception e) {
             e.printStackTrace();
-            Platform.runLater(() ->
-                    pum.mostrarAlertaError("Error","Fallo al guardar el mensaje."));
+            pum.mostrarAlertaError("Error", "Fallo al guardar el mensaje.");
         }
     }
 }
