@@ -1,5 +1,7 @@
 package windows;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -9,6 +11,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import managers.MessageStore;
 import managers.Mensaje;
 import managers.PopUpMessages;
@@ -32,6 +35,7 @@ public class MainInboxWindow extends Application {
 
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
+    private Timeline refresher;
 
     public MainInboxWindow(String currentUser) {
         this.currentUser = currentUser;
@@ -44,34 +48,30 @@ public class MainInboxWindow extends Application {
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
-        primaryStage.setOnCloseRequest(e -> { Platform.exit(); System.exit(0); });
+        primaryStage.setOnCloseRequest(e -> {
+            if (refresher != null) refresher.stop();
+            Platform.exit();
+            System.exit(0);
+        });
 
-        // Limpiar y cargar histórico
-        MessageStore.inboxMessages.clear();
-        MessageStore.sentMessages.clear();
-        loadMessagesFromApi();
-
+        // UI superior
         Label lblWelcome = new Label("Bienvenido, " + currentUser);
         lblWelcome.getStyleClass().add("label2");
         HBox topLeft = new HBox(lblWelcome);
         topLeft.setAlignment(Pos.CENTER_LEFT);
 
         Button btnNuevo = new Button("Nuevo Mensaje");
-        btnNuevo.setOnAction(e -> {
-            try {
-                // Abre SendWindow en una nueva Stage
-                new SendWindow().show(currentUser, new Stage());
-            } catch (Exception ex) {
-                pum.mostrarAlertaError("Error", "No se pudo abrir la ventana de envío.");
-            }
-        });
+        btnNuevo.setOnAction(e -> showSendDialog());
 
         Button btnCerrar = new Button("Cerrar Sesión");
         btnCerrar.setOnAction(e -> {
+            if (refresher != null) refresher.stop();
             primaryStage.close();
             pum.mostrarAlertaInformativa("Cerrar Sesión", "Has cerrado sesión correctamente.");
-            try { new LoginWindow().start(new Stage()); } catch (Exception ex) { }
+            try { new LoginWindow().start(new Stage()); }
+            catch (Exception ex) { /* ignora */ }
         });
+
         HBox topRight = new HBox(10, btnNuevo, btnCerrar);
         topRight.setAlignment(Pos.CENTER_RIGHT);
 
@@ -80,11 +80,12 @@ public class MainInboxWindow extends Application {
         topBar.setRight(topRight);
         topBar.setPadding(new Insets(10));
 
+        // Pestañas Inbox / Sent
         TabPane tabPane = new TabPane();
         Tab tabInbox = new Tab("Bandeja de Entrada", createTable(true));
         Tab tabSent  = new Tab("Mensajes Enviados",   createTable(false));
         tabInbox.setClosable(false);
-        tabSent.setClosable(false);
+        tabSent .setClosable(false);
         tabPane.getTabs().addAll(tabInbox, tabSent);
 
         BorderPane root = new BorderPane();
@@ -93,11 +94,15 @@ public class MainInboxWindow extends Application {
         root.setPadding(new Insets(10));
 
         Scene scene = new Scene(root, 800, 600);
-        scene.getStylesheets().add(
-                getClass().getResource("/temas.css").toExternalForm()
-        );
+        scene.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        // Carga inicial y arranca el polling cada 5s
+        loadMessagesFromApi();
+        refresher = new Timeline(new KeyFrame(Duration.seconds(5), ev -> refreshInbox()));
+        refresher.setCycleCount(Timeline.INDEFINITE);
+        refresher.play();
     }
 
     private TableView<Mensaje> createTable(boolean inbox) {
@@ -106,20 +111,15 @@ public class MainInboxWindow extends Application {
                 : MessageStore.sentMessages;
 
         TableView<Mensaje> table = new TableView<>(list);
-        TableColumn<Mensaje, String> col1 =
-                new TableColumn<>(inbox ? "Remitente" : "Destinatario");
+        var col1 = new TableColumn<Mensaje, String>(inbox ? "Remitente" : "Destinatario");
         col1.setCellValueFactory(c ->
-                new javafx.beans.property.SimpleStringProperty(
-                        c.getValue().getSender()
-                )
+                new javafx.beans.property.SimpleStringProperty(c.getValue().getSender())
         );
         col1.setPrefWidth(150);
 
-        TableColumn<Mensaje, String> col2 = new TableColumn<>("Mensaje");
+        var col2 = new TableColumn<Mensaje, String>("Mensaje");
         col2.setCellValueFactory(c ->
-                new javafx.beans.property.SimpleStringProperty(
-                        c.getValue().getContent()
-                )
+                new javafx.beans.property.SimpleStringProperty(c.getValue().getContent())
         );
         col2.setPrefWidth(600);
 
@@ -138,38 +138,87 @@ public class MainInboxWindow extends Application {
     }
 
     private void loadMessagesFromApi() {
+        // Carga completa de inbox + sent
+        refreshInbox();
+        refreshSent();
+    }
+
+    private void refreshInbox() {
         try {
-            HttpRequest reqIn = HttpRequest.newBuilder()
+            HttpRequest req = HttpRequest.newBuilder()
                     .uri(new URI("http://localhost:8080/api/messages/inbox/" + currentUser))
                     .GET().build();
-            HttpResponse<String> respIn =
-                    httpClient.send(reqIn, HttpResponse.BodyHandlers.ofString());
-            List<MensajeDTO> inbox = mapper.readValue(
-                    respIn.body(), new TypeReference<>() {}
-            );
-            inbox.forEach(dto ->
-                    MessageStore.inboxMessages.add(
-                            new Mensaje(dto.getRemitente(), dto.getMensaje())
-                    )
-            );
-
-            HttpRequest reqSent = HttpRequest.newBuilder()
-                    .uri(new URI("http://localhost:8080/api/messages/sent/" + currentUser))
-                    .GET().build();
-            HttpResponse<String> respSent =
-                    httpClient.send(reqSent, HttpResponse.BodyHandlers.ofString());
-            List<MensajeDTO> sent = mapper.readValue(
-                    respSent.body(), new TypeReference<>() {}
-            );
-            sent.forEach(dto ->
-                    MessageStore.sentMessages.add(
-                            new Mensaje(dto.getDestinatario(), dto.getMensaje())
-                    )
-            );
+            HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            List<MensajeDTO> inbox = mapper.readValue(res.body(), new TypeReference<>() {});
+            Platform.runLater(() -> {
+                MessageStore.inboxMessages.setAll(
+                        inbox.stream()
+                                .map(dto -> new Mensaje(dto.getRemitente(), dto.getMensaje()))
+                                .toList()
+                );
+            });
         } catch (Exception e) {
-            e.printStackTrace();
-            pum.mostrarAlertaError("Error de red", "No se pudieron cargar los mensajes.");
+            // silencia o loggea
         }
     }
 
+    private void refreshSent() {
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(new URI("http://localhost:8080/api/messages/sent/" + currentUser))
+                    .GET().build();
+            HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            List<MensajeDTO> sent = mapper.readValue(res.body(), new TypeReference<>() {});
+            Platform.runLater(() -> {
+                MessageStore.sentMessages.setAll(
+                        sent.stream()
+                                .map(dto -> new Mensaje(dto.getDestinatario(), dto.getMensaje()))
+                                .toList()
+                );
+            });
+        } catch (Exception e) {
+            // silencia o loggea
+        }
+    }
+
+    private void showSendDialog() {
+        TextInputDialog dlg = new TextInputDialog();
+        dlg.setTitle("Enviar Mensaje");
+        dlg.setHeaderText("Introduce destinatario y mensaje (usuario:mensaje)");
+        dlg.setContentText("Formato: usuario:tu mensaje");
+        dlg.showAndWait().ifPresent(input -> {
+            try {
+                String[] parts = input.split(":", 2);
+                String dest = parts[0].trim();
+                String txt  = parts[1].trim();
+
+                MensajeDTO dto = new MensajeDTO();
+                dto.setRemitente(currentUser);
+                dto.setDestinatario(dest);
+                dto.setMensaje(txt);
+                String json = mapper.writeValueAsString(dto);
+
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(new URI("http://localhost:8080/api/messages/send"))
+                        .header("Content-Type","application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(json))
+                        .build();
+                httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+                        .thenAccept(r -> {
+                            if (r.statusCode() == 200) {
+                                Platform.runLater(() -> {
+                                    // tras enviar, refresca la lista de sent inmediatamente
+                                    refreshSent();
+                                });
+                            } else {
+                                Platform.runLater(() ->
+                                        pum.mostrarAlertaError("Error", "No se guardó el mensaje en BD.")
+                                );
+                            }
+                        });
+            } catch (Exception ex) {
+                pum.mostrarAlertaError("Error", "Formato incorrecto. Usa usuario:mensaje");
+            }
+        });
+    }
 }
