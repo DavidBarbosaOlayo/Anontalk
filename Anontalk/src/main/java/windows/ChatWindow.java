@@ -1,5 +1,9 @@
+// src/main/java/windows/ChatWindow.java
 package windows;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -9,142 +13,159 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import managers.mensajes.MessageStore;
-import managers.mensajes.Mensaje;
 import managers.PopUpInfo;
+import managers.mensajes.Mensaje;
 import managers.mensajes.MensajeDTO;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import managers.mensajes.MessageStore;
+import security.HybridCrypto;
+import security.KeyManager;
+import security.RSAUtils;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.security.PublicKey;
 import java.time.LocalDateTime;
 
 public class ChatWindow {
-    private final String currentUser;
-    private final Mensaje mensaje;
-    private final PopUpInfo pum = new PopUpInfo();
 
-    private final HttpClient httpClient;
-    private final ObjectMapper mapper;
+    /* -------- estado -------- */
+    private final String currentUser;
+    private final Mensaje mensaje;          // mensaje “recibido” que se muestra arriba
+    private final PopUpInfo pop = new PopUpInfo();
+
+    private final HttpClient http = HttpClient.newHttpClient();
+    private final ObjectMapper mapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     public ChatWindow(String currentUser, Mensaje mensaje) {
         this.currentUser = currentUser;
         this.mensaje = mensaje;
-        this.httpClient = HttpClient.newHttpClient();
-        this.mapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
+
+    /* =========================================================== */
 
     public void show() {
         Stage chatStage = new Stage();
         chatStage.setTitle("Chat con " + mensaje.getSender());
 
-        Label lblHeader = new Label(
-                "De: " + mensaje.getSender() + "  |  Fecha: " + LocalDateTime.now()
-        );
+        /* ---------- cabecera ---------- */
+        Label lblHeader = new Label("De: " + mensaje.getSender()
+                + "  |  Fecha: " + LocalDateTime.now());
         lblHeader.getStyleClass().add("chat-header");
 
+        /* ---------- cuerpo recibido ---------- */
         Label lblBody = new Label(mensaje.getContent());
         lblBody.setWrapText(true);
         lblBody.getStyleClass().add("chat-message-body");
         ScrollPane scroll = new ScrollPane(lblBody);
         scroll.setFitToWidth(true);
 
+        /* ---------- redactar respuesta ---------- */
         TextArea txtReply = new TextArea();
-        txtReply.setPromptText("Redacta tu respuesta...");
+        txtReply.setPromptText("Redacta tu respuesta…");
         txtReply.setPrefRowCount(4);
         txtReply.getStyleClass().add("chat-textarea");
 
         Button btnBold = new Button("B");
-        btnBold.setOnAction(e -> txtReply.appendText(" **Texto en negrita** "));
+        btnBold.setOnAction(e -> txtReply.appendText(" **texto en negrita** "));
         HBox toolbar = new HBox(10, btnBold);
         toolbar.setAlignment(Pos.CENTER_LEFT);
-        toolbar.getStyleClass().add("chat-toolbar");
 
-        VBox composeArea = new VBox(5, toolbar, txtReply);
-        composeArea.setPadding(new Insets(10));
-        composeArea.getStyleClass().add("chat-compose-area");
+        VBox compose = new VBox(5, toolbar, txtReply);
+        compose.setPadding(new Insets(10));
 
+        /* ---------- botones ---------- */
         Button btnEnviar = new Button("Enviar");
-        btnEnviar.setOnAction(e -> {
-            String respuesta = txtReply.getText().trim();
-            if (respuesta.isEmpty()) {
-                pum.mostrarAlertaError("Error", "No puedes enviar un mensaje vacío.");
-                return;
-            }
-
-            // 1) Preparamos el DTO
-            MensajeDTO dto = new MensajeDTO();
-            dto.setRemitente(currentUser);
-            dto.setDestinatario(mensaje.getSender());
-            dto.setMensaje(respuesta);
-
-            try {
-                String json = mapper.writeValueAsString(dto);
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(new URI("http://localhost:8080/api/messages/send"))
-                        .header("Content-Type","application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(json))
-                        .build();
-
-                // 2) Esperamos la respuesta y la parseamos
-                httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                        .thenAccept(resp -> {
-                            if (resp.statusCode() == 200) {
-                                try {
-                                    MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
-                                    // 3) Añadimos ya con ID
-                                    Platform.runLater(() -> {
-                                        MessageStore.sentMessages.add(
-                                                new Mensaje(saved.getId(),
-                                                        saved.getDestinatario(),
-                                                        saved.getMensaje())
-                                        );
-                                        pum.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
-                                        chatStage.close();
-                                    });
-                                } catch (Exception ex) {
-                                    Platform.runLater(() ->
-                                            pum.mostrarAlertaError("Error", "No se pudo parsear la respuesta del servidor.")
-                                    );
-                                }
-                            } else {
-                                Platform.runLater(() ->
-                                        pum.mostrarAlertaError("Error", "No se pudo guardar el mensaje en la base de datos.")
-                                );
-                            }
-                        });
-            } catch (Exception ex) {
-                pum.mostrarAlertaError("Error", "Fallo al enviar el mensaje.");
-            }
-        });
-
-
         Button btnCerrar = new Button("Cerrar");
         btnCerrar.setOnAction(e -> chatStage.close());
 
-        HBox buttonBar = new HBox(10, btnEnviar, btnCerrar);
-        buttonBar.setAlignment(Pos.CENTER_RIGHT);
-        buttonBar.setPadding(new Insets(10));
+        btnEnviar.setOnAction(e -> sendReply(txtReply.getText().trim(), chatStage));
 
-        BorderPane layout = new BorderPane();
-        layout.setTop(lblHeader);
-        layout.setCenter(scroll);
-        layout.setBottom(new VBox(composeArea, buttonBar));
-        layout.setPadding(new Insets(10));
-        layout.getStyleClass().add("chat-root");
+        HBox bar = new HBox(10, btnEnviar, btnCerrar);
+        bar.setAlignment(Pos.CENTER_RIGHT);
+        bar.setPadding(new Insets(10));
 
-        Scene scene = new Scene(layout, 800, 600);
-        scene.getStylesheets().add(
-                getClass().getResource("/temas.css").toExternalForm()
-        );
+        /* ---------- layout raíz ---------- */
+        BorderPane root = new BorderPane();
+        root.setTop(lblHeader);
+        root.setCenter(scroll);
+        root.setBottom(new VBox(compose, bar));
+        root.setPadding(new Insets(10));
+
+        Scene scene = new Scene(root, 800, 600);
+        scene.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
         chatStage.setScene(scene);
         chatStage.show();
+    }
+
+    /* =========================================================== */
+    /* ===================  LÓGICA DE ENVÍO  ===================== */
+    /* =========================================================== */
+
+    private void sendReply(String plainText, Stage chatStage) {
+        if (plainText.isEmpty()) {
+            pop.mostrarAlertaError("Error", "No puedes enviar un mensaje vacío.");
+            return;
+        }
+        String destinatario = mensaje.getSender();
+
+        try {
+            /* 1 · obtener clave pública del destinatario */
+            HttpRequest pkReq = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8080/api/users/" + destinatario + "/publicKey"))
+                    .GET().build();
+            String pubB64 = http.send(pkReq, HttpResponse.BodyHandlers.ofString()).body();
+            PublicKey destPk = RSAUtils.publicKeyFromBase64(pubB64);
+
+            /* 2 · cifrar híbrido */
+            HybridCrypto.HybridPayload p = HybridCrypto.encrypt(plainText, destPk);
+
+            /* 3 · construir DTO */
+            MensajeDTO dto = new MensajeDTO();
+            dto.setRemitente(currentUser);
+            dto.setDestinatario(destinatario);
+            dto.setCipherTextBase64(p.cipherB64());
+            dto.setEncKeyBase64(p.encKeyB64());
+            dto.setIvBase64(p.ivB64());
+
+            String json = mapper.writeValueAsString(dto);
+
+            /* 4 · POST /messages/send */
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8080/api/messages/send"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(resp -> {
+                        if (resp.statusCode() == 200) {
+                            try {
+                                MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
+                                Platform.runLater(() -> {
+                                    MessageStore.sentMessages.add(
+                                            new Mensaje(saved.getId(),
+                                                    saved.getDestinatario(),
+                                                    plainText)                 // ya lo tenemos plano
+                                    );
+                                    pop.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
+                                    chatStage.close();
+                                });
+                            } catch (Exception ex) {
+                                Platform.runLater(() ->
+                                        pop.mostrarAlertaError("Error", "No se pudo procesar la respuesta del servidor."));
+                            }
+                        } else {
+                            Platform.runLater(() ->
+                                    pop.mostrarAlertaError("Error", "No se pudo guardar el mensaje en el servidor."));
+                        }
+                    });
+
+        } catch (Exception ex) {
+            pop.mostrarAlertaError("Error", "Falló el cifrado o la conexión.");
+        }
     }
 }

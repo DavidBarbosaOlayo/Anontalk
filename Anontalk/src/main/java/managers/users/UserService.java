@@ -55,7 +55,6 @@ public class UserService {
 
         // — Cifrar la clave privada RSA con la clave AES —
         String privEnc = AESUtils.encrypt(privB64, aesKey);
-
         // — Persistir nuevo usuario —
         User u = new User();
         u.setUsername(username);
