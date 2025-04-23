@@ -62,6 +62,5 @@ public class UserService {
                     "Usuario o contraseña incorrectos"
             );
         }
-        // si llega aquí, está OK
     }
 }

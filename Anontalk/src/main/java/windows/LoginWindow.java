@@ -9,6 +9,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -27,18 +28,18 @@ import java.net.http.HttpResponse;
 
 @SpringBootApplication(
         scanBasePackages = {
-                "windows",                // tu UI JavaFX
-                "managers.mensajes",      // mensajes: entidad, repo, service
-                "managers.users"          // usuarios: User, UserRepo, UserService
+                "windows",               // UI JavaFX
+                "managers.mensajes",     // mensajes: entidad, repo, service
+                "managers.users"         // usuarios: User, UserRepo, UserService
         }
 )
 @EnableJpaRepositories(basePackages = {
-        "managers.mensajes",      // JPA repositorio de mensajes
-        "managers.users"          // JPA repositorio de usuarios
+        "managers.mensajes",
+        "managers.users"
 })
 @EntityScan(basePackages = {
-        "managers.mensajes",      // entidades de mensajes
-        "managers.users"          // entidades de usuarios
+        "managers.mensajes",
+        "managers.users"
 })
 public class LoginWindow extends Application {
     private static ConfigurableApplicationContext springContext;
@@ -47,17 +48,13 @@ public class LoginWindow extends Application {
     private final ObjectMapper mapper = new ObjectMapper();
 
     public static void main(String[] args) {
-        // 1) Arrancamos Spring Boot (crea tablas en PostgreSQL/Render)
         springContext = SpringApplication.run(LoginWindow.class, args);
-        // 2) Luego lanzamos JavaFX
         launch(args);
     }
 
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Login - Anontalk");
-
-        // Al cerrar la ventana: detenemos Spring y salimos
         primaryStage.setOnCloseRequest(e -> {
             springContext.close();
             Platform.exit();
@@ -86,7 +83,7 @@ public class LoginWindow extends Application {
                     .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                     .build();
 
-            client.sendAsync(req, HttpResponse.BodyHandlers.discarding())
+            client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
                     .thenAccept(resp -> {
                         if (resp.statusCode() == 200) {
                             Platform.runLater(() -> {
@@ -99,6 +96,7 @@ public class LoginWindow extends Application {
                                 }
                             });
                         } else {
+                            // en login, cualquier error mostramos mismo mensaje
                             Platform.runLater(() ->
                                     popUp.mostrarAlertaError("Error", "Usuario o contraseña incorrectos")
                             );
@@ -120,17 +118,27 @@ public class LoginWindow extends Application {
                     .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                     .build();
 
-            client.sendAsync(req, HttpResponse.BodyHandlers.discarding())
+            client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
                     .thenAccept(resp -> {
-                        if (resp.statusCode() == 200) {
-                            Platform.runLater(() ->
-                                    popUp.mostrarAlertaInformativa("Éxito", "Usuario registrado")
-                            );
-                        } else {
-                            Platform.runLater(() ->
-                                    popUp.mostrarAlertaError("Error", "El usuario ya existe")
-                            );
-                        }
+                        int status = resp.statusCode();
+                        String respBody = resp.body();
+                        Platform.runLater(() -> {
+                            if (status == 200) {
+                                popUp.mostrarAlertaInformativa("Éxito", "Usuario registrado correctamente");
+                            } else if (status == 409) {
+                                popUp.mostrarAlertaError("Error", "Ya existe un usuario con ese nombre");
+                            } else if (status == 400) {
+                                try {
+                                    JsonNode err = mapper.readTree(respBody);
+                                    String msg = err.path("message").asText("Error en los datos de registro");
+                                    popUp.mostrarAlertaError("Error", msg);
+                                } catch (Exception ex) {
+                                    popUp.mostrarAlertaError("Error", "Datos inválidos");
+                                }
+                            } else {
+                                popUp.mostrarAlertaError("Error", "Ha ocurrido un error inesperado");
+                            }
+                        });
                     });
         });
 
