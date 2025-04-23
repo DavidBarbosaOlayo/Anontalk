@@ -1,3 +1,4 @@
+// src/main/java/managers/users/User.java
 package managers.users;
 
 import jakarta.persistence.*;
@@ -21,44 +22,34 @@ public class User {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public Long getId() {
-        return id;
-    }
+    @Column(name = "public_key_base64", columnDefinition = "TEXT", nullable = false)
+    private String publicKeyBase64;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    @Column(name = "private_key_encrypted_base64", columnDefinition = "TEXT", nullable = false)
+    private String privateKeyEncryptedBase64;
 
-    public String getUsername() {
-        return username;
-    }
+    // — getters & setters —
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public String getPasswordHash() {
-        return passwordHash;
-    }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
-    public String getSalt() {
-        return salt;
-    }
+    public String getSalt() { return salt; }
+    public void setSalt(String salt) { this.salt = salt; }
 
-    public void setSalt(String salt) {
-        this.salt = salt;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
+    public String getPublicKeyBase64() { return publicKeyBase64; }
+    public void setPublicKeyBase64(String publicKeyBase64) { this.publicKeyBase64 = publicKeyBase64; }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
+    public String getPrivateKeyEncryptedBase64() { return privateKeyEncryptedBase64; }
+    public void setPrivateKeyEncryptedBase64(String privateKeyEncryptedBase64) {
+        this.privateKeyEncryptedBase64 = privateKeyEncryptedBase64;
     }
 }
-

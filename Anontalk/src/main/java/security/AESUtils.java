@@ -25,7 +25,7 @@ public class AESUtils {
 
     // Cifrar en Base64 para guardarlo en la BD
     public static String encrypt(String data, SecretKey key) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES");
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
         cipher.init(Cipher.ENCRYPT_MODE, key);
         byte[] encrypted = cipher.doFinal(data.getBytes("UTF-8"));
         return Base64.getEncoder().encodeToString(encrypted);
