@@ -78,11 +78,13 @@ public class ChatWindow {
                 pum.mostrarAlertaError("Error", "No puedes enviar un mensaje vacío.");
                 return;
             }
-            // Persistir vía API REST
+
+            // 1) Preparamos el DTO
             MensajeDTO dto = new MensajeDTO();
             dto.setRemitente(currentUser);
             dto.setDestinatario(mensaje.getSender());
             dto.setMensaje(respuesta);
+
             try {
                 String json = mapper.writeValueAsString(dto);
                 HttpRequest req = HttpRequest.newBuilder()
@@ -90,17 +92,39 @@ public class ChatWindow {
                         .header("Content-Type","application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(json))
                         .build();
-                httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString());
+
+                // 2) Esperamos la respuesta y la parseamos
+                httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+                        .thenAccept(resp -> {
+                            if (resp.statusCode() == 200) {
+                                try {
+                                    MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
+                                    // 3) Añadimos ya con ID
+                                    Platform.runLater(() -> {
+                                        MessageStore.sentMessages.add(
+                                                new Mensaje(saved.getId(),
+                                                        saved.getDestinatario(),
+                                                        saved.getMensaje())
+                                        );
+                                        pum.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
+                                        chatStage.close();
+                                    });
+                                } catch (Exception ex) {
+                                    Platform.runLater(() ->
+                                            pum.mostrarAlertaError("Error", "No se pudo parsear la respuesta del servidor.")
+                                    );
+                                }
+                            } else {
+                                Platform.runLater(() ->
+                                        pum.mostrarAlertaError("Error", "No se pudo guardar el mensaje en la base de datos.")
+                                );
+                            }
+                        });
             } catch (Exception ex) {
-                Platform.runLater(() -> pum.mostrarAlertaError(
-                        "Error", "No se pudo guardar el mensaje en la base de datos."
-                ));
+                pum.mostrarAlertaError("Error", "Fallo al enviar el mensaje.");
             }
-            // Actualizar UI local
-            MessageStore.sentMessages.add(new Mensaje(mensaje.getSender(), respuesta));
-            pum.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
-            chatStage.close();
         });
+
 
         Button btnCerrar = new Button("Cerrar");
         btnCerrar.setOnAction(e -> chatStage.close());

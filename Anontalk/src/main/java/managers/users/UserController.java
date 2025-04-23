@@ -1,3 +1,4 @@
+// src/main/java/managers/users/UserController.java
 package managers.users;
 
 import org.springframework.http.ResponseEntity;
@@ -14,13 +15,13 @@ public class UserController {
 
     @PostMapping("/register")
     public ResponseEntity<Void> register(@RequestBody UserDTO dto) {
-        boolean ok = svc.register(dto.getUsername(), dto.getPassword());
-        return ok ? ResponseEntity.ok().build() : ResponseEntity.status(409).build();
+        svc.register(dto.getUsername().trim(), dto.getPassword());
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/login")
     public ResponseEntity<Void> login(@RequestBody UserDTO dto) {
-        boolean ok = svc.authenticate(dto.getUsername(), dto.getPassword());
-        return ok ? ResponseEntity.ok().build() : ResponseEntity.status(401).build();
+        svc.authenticate(dto.getUsername().trim(), dto.getPassword());
+        return ResponseEntity.ok().build();
     }
 }
