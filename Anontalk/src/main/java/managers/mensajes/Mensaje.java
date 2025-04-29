@@ -4,21 +4,25 @@ public class Mensaje {
     private Long id;
     private String sender;
     private String content;
+    private String asunto;
 
     public Mensaje() { }
 
-    // Para uso en UI (sin id, p. ej. pruebas)
+    // todo --valorar su uso en un futuro
     public Mensaje(String sender, String content) {
         this.sender = sender;
         this.content = content;
+
     }
 
     // Nuevo constructor con id
-    public Mensaje(Long id, String sender, String content) {
+    public Mensaje(Long id, String sender, String asunto, String content) {
         this.id = id;
         this.sender = sender;
+        this.asunto = asunto;
         this.content = content;
     }
+
 
     public Long getId() {
         return id;
@@ -40,4 +44,7 @@ public class Mensaje {
     public void setContent(String content) {
         this.content = content;
     }
+
+    public String getAsunto() { return asunto; }
+    public void setAsunto(String asunto) { this.asunto = asunto; }
 }

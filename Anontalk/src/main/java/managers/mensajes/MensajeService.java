@@ -1,12 +1,12 @@
-// src/main/java/managers/mensajes/MensajeService.java
 package managers.mensajes;
 
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Servicio “ciego”: almacena blobs cifrados sin conocer su contenido.
+ * Servicio “ciego”: almacenamos blobs cifrados sin conocer su contenido.
  */
 @Service
 public class MensajeService {
@@ -18,37 +18,26 @@ public class MensajeService {
     }
 
     public MensajeDTO sendMessage(MensajeDTO dto) {
-        MensajeSB ent = new MensajeSB(
-                dto.getRemitente(),
-                dto.getDestinatario(),
-                dto.getCipherTextBase64(),
-                dto.getEncKeyBase64(),
-                dto.getIvBase64()
-        );
-        MensajeSB saved = repo.save(ent);
+        MensajeSB ent = new MensajeSB(dto.getRemitente(), dto.getDestinatario(), dto.getCipherTextBase64(), dto.getEncKeyBase64(), dto.getIvBase64());
+        ent.setAsunto(dto.getAsunto()); // ← AÑADE ESTA LÍNEA
 
-        return new MensajeDTO(
-                saved.getId(), saved.getRemitente(), saved.getDestinatario(),
-                saved.getCipherTextBase64(), saved.getEncKeyBase64(), saved.getIvBase64(),
-                saved.getFechaHora()
-        );
+        MensajeSB saved = repo.save(ent);
+        return new MensajeDTO(saved.getId(), saved.getRemitente(), saved.getDestinatario(), saved.getAsunto(),                // ← asunto aquí
+                saved.getCipherTextBase64(), saved.getEncKeyBase64(), saved.getIvBase64(), saved.getFechaHora());
     }
 
+
     public List<MensajeDTO> getInbox(String destinatario) {
-        return repo.findByDestinatario(destinatario).stream()
-                .map(m -> new MensajeDTO(m.getId(), m.getRemitente(), m.getDestinatario(),
-                        m.getCipherTextBase64(), m.getEncKeyBase64(), m.getIvBase64(),
-                        m.getFechaHora()))
-                .collect(Collectors.toList());
+        return repo.findByDestinatario(destinatario).stream().map(m -> new MensajeDTO(m.getId(), m.getRemitente(), m.getDestinatario(), m.getAsunto(), m.getCipherTextBase64(), m.getEncKeyBase64(), m.getIvBase64(), m.getFechaHora())).collect(Collectors.toList());
     }
 
     public List<MensajeDTO> getSent(String remitente) {
-        return repo.findByRemitente(remitente).stream()
-                .map(m -> new MensajeDTO(m.getId(), m.getRemitente(), m.getDestinatario(),
-                        m.getCipherTextBase64(), m.getEncKeyBase64(), m.getIvBase64(),
-                        m.getFechaHora()))
-                .collect(Collectors.toList());
+        return repo.findByRemitente(remitente).stream().map(m -> new MensajeDTO(m.getId(), m.getRemitente(), m.getDestinatario(), m.getAsunto(),                // ← incluimos el asunto aquí
+                m.getCipherTextBase64(), m.getEncKeyBase64(), m.getIvBase64(), m.getFechaHora())).collect(Collectors.toList());
     }
 
-    public void deleteMessage(Long id) { repo.deleteById(id); }
+
+    public void deleteMessage(Long id) {
+        repo.deleteById(id);
+    }
 }

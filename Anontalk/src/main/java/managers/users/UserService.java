@@ -1,4 +1,3 @@
-// src/main/java/managers/users/UserService.java
 package managers.users;
 
 import org.springframework.stereotype.Service;
@@ -14,7 +13,6 @@ import javax.crypto.spec.PBEKeySpec;
 import java.security.KeyPair;
 import java.security.spec.InvalidKeySpecException;
 import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -77,9 +75,7 @@ public class UserService {
      */
     private SecretKey deriveAesKeyFromPassword(String password, String salt) {
         try {
-            PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(), 65536,       // iteraciones
-                    256          // longitud en bits
-            );
+            PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(), 65536, 256);
             SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
             byte[] keyBytes = skf.generateSecret(spec).getEncoded();
             return AESUtils.getKeyFromBytes(keyBytes);

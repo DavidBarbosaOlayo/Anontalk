@@ -15,8 +15,9 @@ public class PasswordsUtils {
 
     /**
      * Hashea una contraseña con PBKDF2.
+     *
      * @param password Contraseña en texto plano
-     * @param salt Un salt aleatorio para cada usuario
+     * @param salt     Un salt aleatorio para cada usuario
      * @return hash en Base64
      */
     public static String hashPassword(String password, String salt) {
@@ -37,9 +38,10 @@ public class PasswordsUtils {
 
     /**
      * Verifica si una contraseña en texto plano corresponde al hash almacenado (con el mismo salt).
+     *
      * @param plainPassword Contraseña en texto plano
-     * @param salt Salt del usuario
-     * @param expectedHash Hash esperado (en BD)
+     * @param salt          Salt del usuario
+     * @param expectedHash  Hash esperado (en BD)
      * @return true si coinciden, false en caso contrario
      */
     public static boolean verifyPassword(String plainPassword, String salt, String expectedHash) {

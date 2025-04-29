@@ -1,4 +1,3 @@
-// src/main/java/windows/MainInboxWindow.java
 package windows;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -18,6 +17,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import managers.PopUpInfo;
@@ -44,14 +44,14 @@ public class MainInboxWindow extends Application {
     private Stage stage;
 
     private final HttpClient http = HttpClient.newHttpClient();
-    private final ObjectMapper mapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule()).disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private Timeline refresher;
     private final Image trashIcon = new Image(getClass().getResourceAsStream("/papelera.png"), 16, 16, true, true);
 
-    public MainInboxWindow(String currentUser) { this.currentUser = currentUser; }
+    public MainInboxWindow(String currentUser) {
+        this.currentUser = currentUser;
+    }
 
     /* =========================================================== */
 
@@ -77,23 +77,18 @@ public class MainInboxWindow extends Application {
             if (refresher != null) refresher.stop();
             stage.close();
             pop.mostrarAlertaInformativa("Cerrar Sesión", "Has cerrado sesión correctamente.");
-            try { new LoginWindow().start(new Stage()); } catch (Exception ignored) { }
+            try {
+                new LoginWindow().start(new Stage());
+            } catch (Exception ignored) {
+            }
         });
 
-        BorderPane topBar = new BorderPane(
-                new HBox(lblWelcome),
-                null,
-                new HBox(10, btnNuevo, btnCerrar),
-                null, null
-        );
+        BorderPane topBar = new BorderPane(new HBox(lblWelcome), null, new HBox(10, btnNuevo, btnCerrar), null, null);
         BorderPane.setAlignment(lblWelcome, Pos.CENTER_LEFT);
         topBar.setPadding(new Insets(10));
 
         /* ---------- tablas ---------- */
-        TabPane tabs = new TabPane(
-                new Tab("Bandeja de Entrada", createTable(true)),
-                new Tab("Mensajes Enviados", createTable(false))
-        );
+        TabPane tabs = new TabPane(new Tab("Bandeja de Entrada", createTable(true)), new Tab("Mensajes Enviados", createTable(false)));
         tabs.getTabs().forEach(t -> t.setClosable(false));
 
         /* ---------- escena ---------- */
@@ -126,9 +121,10 @@ public class MainInboxWindow extends Application {
         colParty.setCellValueFactory(new PropertyValueFactory<>("sender"));
         colParty.setPrefWidth(150);
 
-        TableColumn<Mensaje, String> colMsg = new TableColumn<>("Mensaje");
-        colMsg.setCellValueFactory(new PropertyValueFactory<>("content"));
-        colMsg.setPrefWidth(580);
+        TableColumn<Mensaje, String> colAsunto = new TableColumn<>("Asunto");
+        colAsunto.setCellValueFactory(new PropertyValueFactory<>("asunto"));
+        colAsunto.setPrefWidth(580);
+
 
         TableColumn<Mensaje, Void> colDel = new TableColumn<>("");
         colDel.setPrefWidth(40);
@@ -144,13 +140,14 @@ public class MainInboxWindow extends Application {
                 });
             }
 
-            @Override protected void updateItem(Void item, boolean empty) {
+            @Override
+            protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
                 setGraphic(empty ? null : btn);
             }
         });
 
-        table.getColumns().addAll(colParty, colMsg, colDel);
+        table.getColumns().addAll(colParty, colAsunto, colDel);
         table.setPlaceholder(new Label(inbox ? "No hay mensajes." : "Nada enviado."));
         table.setRowFactory(tv -> {
             TableRow<Mensaje> row = new TableRow<>();
@@ -169,32 +166,33 @@ public class MainInboxWindow extends Application {
     /*  Carga de mensajes  */
     /* =========================================================== */
 
-    private void loadMessages() { refreshInbox(); refreshSent(); }
+    private void loadMessages() {
+        refreshInbox();
+        refreshSent();
+    }
 
     private void refreshInbox() {
         try {
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/messages/inbox/" + currentUser))
-                    .GET().build();
+            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/inbox/" + currentUser)).GET().build();
 
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
-            List<MensajeDTO> inbox = mapper.readValue(res.body(), new TypeReference<>() {});
-            Platform.runLater(() -> MessageStore.inboxMessages.setAll(
-                    inbox.stream().map(this::dtoToMensajeInbox).toList()));
-        } catch (Exception ignored) { }
+            List<MensajeDTO> inbox = mapper.readValue(res.body(), new TypeReference<>() {
+            });
+            Platform.runLater(() -> MessageStore.inboxMessages.setAll(inbox.stream().map(this::dtoToMensajeInbox).toList()));
+        } catch (Exception ignored) {
+        }
     }
 
     private void refreshSent() {
         try {
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/messages/sent/" + currentUser))
-                    .GET().build();
+            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/sent/" + currentUser)).GET().build();
 
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
-            List<MensajeDTO> sent = mapper.readValue(res.body(), new TypeReference<>() {});
-            Platform.runLater(() -> MessageStore.sentMessages.setAll(
-                    sent.stream().map(this::dtoToMensajeSent).toList()));
-        } catch (Exception ignored) { }
+            List<MensajeDTO> sent = mapper.readValue(res.body(), new TypeReference<>() {
+            });
+            Platform.runLater(() -> MessageStore.sentMessages.setAll(sent.stream().map(this::dtoToMensajeSent).toList()));
+        } catch (Exception ignored) {
+        }
     }
 
     /* ---------- descifrado helpers ---------- */
@@ -202,21 +200,21 @@ public class MainInboxWindow extends Application {
     private Mensaje dtoToMensajeInbox(MensajeDTO dto) {
         String plain;
         try {
-            plain = HybridCrypto.decrypt(new HybridCrypto.HybridPayload(
-                            dto.getCipherTextBase64(), dto.getEncKeyBase64(), dto.getIvBase64()),
-                    KeyManager.getPrivateKey());
-        } catch (Exception ex) { plain = "[Error al descifrar]"; }
-        return new Mensaje(dto.getId(), dto.getRemitente(), plain);
+            plain = HybridCrypto.decrypt(new HybridCrypto.HybridPayload(dto.getCipherTextBase64(), dto.getEncKeyBase64(), dto.getIvBase64()), KeyManager.getPrivateKey());
+        } catch (Exception ex) {
+            plain = "[Error al descifrar]";
+        }
+        return new Mensaje(dto.getId(), dto.getRemitente(), dto.getAsunto(), plain);
     }
 
     private Mensaje dtoToMensajeSent(MensajeDTO dto) {
         String plain;
         try {
-            plain = HybridCrypto.decrypt(new HybridCrypto.HybridPayload(
-                            dto.getCipherTextBase64(), dto.getEncKeyBase64(), dto.getIvBase64()),
-                    KeyManager.getPrivateKey());
-        } catch (Exception ex) { plain = "[Error al descifrar]"; }
-        return new Mensaje(dto.getId(), dto.getDestinatario(), plain);
+            plain = HybridCrypto.decrypt(new HybridCrypto.HybridPayload(dto.getCipherTextBase64(), dto.getEncKeyBase64(), dto.getIvBase64()), KeyManager.getPrivateKey());
+        } catch (Exception ex) {
+            plain = "[Error al descifrar]";
+        }
+        return new Mensaje(dto.getId(), dto.getDestinatario(), dto.getAsunto(), plain);
     }
 
     /* =========================================================== */
@@ -224,39 +222,76 @@ public class MainInboxWindow extends Application {
     /* =========================================================== */
 
     private void showSendDialog() {
-        TextInputDialog dlg = new TextInputDialog();
-        dlg.setTitle("Enviar Mensaje");
-        dlg.setHeaderText("usuario:mensaje");
-        dlg.setContentText("Formato:");
+        Stage dialog = new Stage();
+        dialog.setTitle("Redactar mensaje");
 
-        dlg.showAndWait().ifPresent(input -> {
+        // --- Campos de entrada ---
+        TextField txtPara = new TextField();
+        txtPara.setPromptText("Para");
+
+        TextField txtAsunto = new TextField();
+        txtAsunto.setPromptText("Asunto");
+
+        TextArea txtCuerpo = new TextArea();
+        txtCuerpo.setPromptText("Escribe tu mensaje...");
+        txtCuerpo.setWrapText(true);
+        txtCuerpo.setPrefHeight(200);
+
+        // --- Botones ---
+        Button btnEnviar = new Button("Enviar");
+        Button btnCancelar = new Button("Cancelar");
+        btnCancelar.setOnAction(e -> dialog.close());
+
+        btnEnviar.setOnAction(e -> {
+            String dest = txtPara.getText().trim();
+            String asunto = txtAsunto.getText().trim();
+            String cuerpo = txtCuerpo.getText().trim();
+
+            if (dest.isBlank() || cuerpo.isBlank()) {
+                pop.mostrarAlertaError("Error", "Completa al menos el destinatario y el cuerpo.");
+                return;
+            }
+
             try {
-                String[] parts = input.split(":", 2);
-                String dest = parts[0].trim();
-                String txt = parts[1].trim();
-                if (dest.isBlank() || txt.isBlank()) throw new IllegalArgumentException();
-
-                /* 1 · clave pública del destinatario */
+                // 1. Obtener clave pública del destinatario y comprobar existencia
                 HttpRequest pkReq = HttpRequest.newBuilder()
                         .uri(URI.create("http://localhost:8080/api/users/" + dest + "/publicKey"))
                         .GET().build();
-                String pubB64 = http.send(pkReq, HttpResponse.BodyHandlers.ofString()).body();
+                HttpResponse<String> pkRes = http.send(pkReq, HttpResponse.BodyHandlers.ofString());
+
+                if (pkRes.statusCode() == 404) {
+                    // Usuario no encontrado
+                    System.err.println("ERROR: Usuario '" + dest + "' no existe (404).");
+                    pop.mostrarAlertaError("Usuario desconocido",
+                            "El usuario '" + dest + "' no existe en el sistema.");
+                    return;
+                } else if (pkRes.statusCode() != 200) {
+                    // Otro error HTTP
+                    System.err.println("ERROR: al solicitar clave pública de '" + dest +
+                            "'. Código: " + pkRes.statusCode());
+                    pop.mostrarAlertaError("Error servidor",
+                            "No se pudo verificar el usuario. Inténtalo más tarde.");
+                    return;
+                }
+
+                String pubB64 = pkRes.body();
                 PublicKey destPk = RSAUtils.publicKeyFromBase64(pubB64);
 
-                /* 2 · cifrado híbrido */
-                HybridCrypto.HybridPayload p = HybridCrypto.encrypt(txt, destPk);
+                // 2. Cifrado híbrido
+                HybridCrypto.HybridPayload p = HybridCrypto.encrypt(cuerpo, destPk);
 
-                /* 3 · DTO */
+                // 3. Crear DTO
                 MensajeDTO dto = new MensajeDTO();
                 dto.setRemitente(currentUser);
                 dto.setDestinatario(dest);
+                dto.setAsunto(asunto);
                 dto.setCipherTextBase64(p.cipherB64());
                 dto.setEncKeyBase64(p.encKeyB64());
                 dto.setIvBase64(p.ivB64());
 
                 String json = mapper.writeValueAsString(dto);
 
-                /* 4 · POST */
+                // 4. Enviar mensaje al backend
                 HttpRequest req = HttpRequest.newBuilder()
                         .uri(URI.create("http://localhost:8080/api/messages/send"))
                         .header("Content-Type", "application/json")
@@ -265,16 +300,39 @@ public class MainInboxWindow extends Application {
 
                 http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
                         .thenAccept(r -> {
-                            if (r.statusCode() == 200) Platform.runLater(this::refreshSent);
-                            else Platform.runLater(() ->
-                                    pop.mostrarAlertaError("Error", "No se guardó el mensaje."));
+                            if (r.statusCode() == 200) {
+                                Platform.runLater(() -> {
+                                    refreshSent();
+                                    dialog.close();
+                                    pop.mostrarAlertaInformativa("Enviado", "Mensaje enviado con éxito.");
+                                });
+                            } else {
+                                System.err.println("ERROR: envío mensaje fallido, status=" + r.statusCode());
+                                Platform.runLater(() ->
+                                        pop.mostrarAlertaError("Error", "No se pudo enviar el mensaje."));
+                            }
                         });
 
             } catch (Exception ex) {
-                pop.mostrarAlertaError("Error", "Formato incorrecto o fallo de cifrado.");
+                System.err.println("ERROR inesperado al enviar mensaje: " + ex.getMessage());
+                pop.mostrarAlertaError("Error", "Fallo al cifrar o enviar el mensaje.");
             }
         });
+
+        HBox botones = new HBox(10, btnEnviar, btnCancelar);
+        botones.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox layout = new VBox(10, txtPara, txtAsunto, txtCuerpo, botones);
+        layout.setPadding(new Insets(20));
+        layout.setPrefWidth(500);
+
+        Scene scene = new Scene(layout);
+        scene.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.show();
     }
+
+
 
     /* =========================================================== */
     /*  eliminar mensaje  */
@@ -284,10 +342,9 @@ public class MainInboxWindow extends Application {
         MessageStore.inboxMessages.removeIf(m -> m.getId().equals(msg.getId()));
         MessageStore.sentMessages.removeIf(m -> m.getId().equals(msg.getId()));
         try {
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/messages/" + msg.getId()))
-                    .DELETE().build();
+            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/" + msg.getId())).DELETE().build();
             http.sendAsync(req, HttpResponse.BodyHandlers.discarding());
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
     }
 }

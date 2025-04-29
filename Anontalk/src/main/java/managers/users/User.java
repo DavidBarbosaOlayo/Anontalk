@@ -1,13 +1,14 @@
-// src/main/java/managers/users/User.java
 package managers.users;
 
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "usuarios")
 public class User {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(unique = true, nullable = false)
@@ -28,27 +29,59 @@ public class User {
     @Column(name = "private_key_encrypted_base64", columnDefinition = "TEXT", nullable = false)
     private String privateKeyEncryptedBase64;
 
-    // — getters & setters —
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public String getUsername() {
+        return username;
+    }
 
-    public String getSalt() { return salt; }
-    public void setSalt(String salt) { this.salt = salt; }
+    public void setUsername(String username) {
+        this.username = username;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getPasswordHash() {
+        return passwordHash;
+    }
 
-    public String getPublicKeyBase64() { return publicKeyBase64; }
-    public void setPublicKeyBase64(String publicKeyBase64) { this.publicKeyBase64 = publicKeyBase64; }
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 
-    public String getPrivateKeyEncryptedBase64() { return privateKeyEncryptedBase64; }
+    public String getSalt() {
+        return salt;
+    }
+
+    public void setSalt(String salt) {
+        this.salt = salt;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getPublicKeyBase64() {
+        return publicKeyBase64;
+    }
+
+    public void setPublicKeyBase64(String publicKeyBase64) {
+        this.publicKeyBase64 = publicKeyBase64;
+    }
+
+    public String getPrivateKeyEncryptedBase64() {
+        return privateKeyEncryptedBase64;
+    }
+
     public void setPrivateKeyEncryptedBase64(String privateKeyEncryptedBase64) {
         this.privateKeyEncryptedBase64 = privateKeyEncryptedBase64;
     }

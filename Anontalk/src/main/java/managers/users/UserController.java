@@ -1,4 +1,3 @@
-// src/main/java/managers/users/UserController.java
 package managers.users;
 
 import org.springframework.http.ResponseEntity;

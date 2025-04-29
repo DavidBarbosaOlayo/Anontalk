@@ -1,4 +1,3 @@
-// src/main/java/windows/ChatWindow.java
 package windows;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,7 +17,6 @@ import managers.mensajes.Mensaje;
 import managers.mensajes.MensajeDTO;
 import managers.mensajes.MessageStore;
 import security.HybridCrypto;
-import security.KeyManager;
 import security.RSAUtils;
 
 import java.net.URI;
@@ -36,24 +34,20 @@ public class ChatWindow {
     private final PopUpInfo pop = new PopUpInfo();
 
     private final HttpClient http = HttpClient.newHttpClient();
-    private final ObjectMapper mapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule()).disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     public ChatWindow(String currentUser, Mensaje mensaje) {
         this.currentUser = currentUser;
         this.mensaje = mensaje;
     }
 
-    /* =========================================================== */
-
     public void show() {
         Stage chatStage = new Stage();
         chatStage.setTitle("Chat con " + mensaje.getSender());
 
         /* ---------- cabecera ---------- */
-        Label lblHeader = new Label("De: " + mensaje.getSender()
-                + "  |  Fecha: " + LocalDateTime.now());
+        Label lblHeader = new Label("De: " + mensaje.getSender() + "  |  Asunto: " + mensaje.getAsunto() + "  |  Fecha: " + LocalDateTime.now());
+
         lblHeader.getStyleClass().add("chat-header");
 
         /* ---------- cuerpo recibido ---------- */
@@ -113,56 +107,45 @@ public class ChatWindow {
         String destinatario = mensaje.getSender();
 
         try {
-            /* 1 · obtener clave pública del destinatario */
-            HttpRequest pkReq = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/users/" + destinatario + "/publicKey"))
-                    .GET().build();
+            /* obtener clave pública del destinatario */
+            HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + destinatario + "/publicKey")).GET().build();
             String pubB64 = http.send(pkReq, HttpResponse.BodyHandlers.ofString()).body();
             PublicKey destPk = RSAUtils.publicKeyFromBase64(pubB64);
 
-            /* 2 · cifrar híbrido */
+            /* cifrar híbrido */
             HybridCrypto.HybridPayload p = HybridCrypto.encrypt(plainText, destPk);
 
-            /* 3 · construir DTO */
+            /* construir DTO */
             MensajeDTO dto = new MensajeDTO();
             dto.setRemitente(currentUser);
             dto.setDestinatario(destinatario);
+            dto.setAsunto(mensaje.getAsunto());
             dto.setCipherTextBase64(p.cipherB64());
             dto.setEncKeyBase64(p.encKeyB64());
             dto.setIvBase64(p.ivB64());
 
             String json = mapper.writeValueAsString(dto);
 
-            /* 4 · POST /messages/send */
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/messages/send"))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
-                    .build();
+            /* POST /messages/send */
+            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
 
-            http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(resp -> {
-                        if (resp.statusCode() == 200) {
-                            try {
-                                MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
-                                Platform.runLater(() -> {
-                                    MessageStore.sentMessages.add(
-                                            new Mensaje(saved.getId(),
-                                                    saved.getDestinatario(),
-                                                    plainText)                 // ya lo tenemos plano
-                                    );
-                                    pop.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
-                                    chatStage.close();
-                                });
-                            } catch (Exception ex) {
-                                Platform.runLater(() ->
-                                        pop.mostrarAlertaError("Error", "No se pudo procesar la respuesta del servidor."));
-                            }
-                        } else {
-                            Platform.runLater(() ->
-                                    pop.mostrarAlertaError("Error", "No se pudo guardar el mensaje en el servidor."));
-                        }
-                    });
+            http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
+                if (resp.statusCode() == 200) {
+                    try {
+                        MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
+                        Platform.runLater(() -> {
+                            MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));
+
+                            pop.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
+                            chatStage.close();
+                        });
+                    } catch (Exception ex) {
+                        Platform.runLater(() -> pop.mostrarAlertaError("Error", "No se pudo procesar la respuesta del servidor."));
+                    }
+                } else {
+                    Platform.runLater(() -> pop.mostrarAlertaError("Error", "No se pudo guardar el mensaje en el servidor."));
+                }
+            });
 
         } catch (Exception ex) {
             pop.mostrarAlertaError("Error", "Falló el cifrado o la conexión.");
