@@ -1,4 +1,4 @@
-package security;
+package security.passwords;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;

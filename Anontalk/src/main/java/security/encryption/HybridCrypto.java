@@ -1,4 +1,4 @@
-package security;
+package security.encryption;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;

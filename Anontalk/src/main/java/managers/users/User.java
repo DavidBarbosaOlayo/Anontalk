@@ -1,7 +1,6 @@
 package managers.users;
 
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -13,6 +12,9 @@ public class User {
 
     @Column(unique = true, nullable = false)
     private String username;
+
+    @Column(unique = true, nullable = true)
+    private String email;             // ← NUEVO campo
 
     @Column(nullable = false)
     private String passwordHash;
@@ -29,60 +31,29 @@ public class User {
     @Column(name = "private_key_encrypted_base64", columnDefinition = "TEXT", nullable = false)
     private String privateKeyEncryptedBase64;
 
+    // ← getters/setters para todos los campos
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
-    public String getUsername() {
-        return username;
-    }
+    public String getEmail() { return email; }              // ←
+    public void setEmail(String email) { this.email = email; }// ←
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
-    public String getPasswordHash() {
-        return passwordHash;
-    }
+    public String getSalt() { return salt; }
+    public void setSalt(String salt) { this.salt = salt; }
 
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public String getSalt() {
-        return salt;
-    }
+    public String getPublicKeyBase64() { return publicKeyBase64; }
+    public void setPublicKeyBase64(String publicKeyBase64) { this.publicKeyBase64 = publicKeyBase64; }
 
-    public void setSalt(String salt) {
-        this.salt = salt;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public String getPublicKeyBase64() {
-        return publicKeyBase64;
-    }
-
-    public void setPublicKeyBase64(String publicKeyBase64) {
-        this.publicKeyBase64 = publicKeyBase64;
-    }
-
-    public String getPrivateKeyEncryptedBase64() {
-        return privateKeyEncryptedBase64;
-    }
-
-    public void setPrivateKeyEncryptedBase64(String privateKeyEncryptedBase64) {
-        this.privateKeyEncryptedBase64 = privateKeyEncryptedBase64;
-    }
+    public String getPrivateKeyEncryptedBase64() { return privateKeyEncryptedBase64; }
+    public void setPrivateKeyEncryptedBase64(String privateKeyEncryptedBase64) { this.privateKeyEncryptedBase64 = privateKeyEncryptedBase64; }
 }

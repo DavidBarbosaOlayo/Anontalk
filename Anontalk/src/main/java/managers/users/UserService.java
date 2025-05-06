@@ -1,61 +1,85 @@
 package managers.users;
 
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
-import security.AESUtils;
-import security.PasswordsUtils;
-import security.RSAUtils;
+import security.encryption.AESUtils;
+import security.encryption.RSAUtils;
+import security.passwords.PasswordRTRepo;
+import security.passwords.PasswordResetToken;
+import security.passwords.PasswordsUtils;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import java.security.KeyPair;
-import java.security.spec.InvalidKeySpecException;
 import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Service
+@Transactional
 public class UserService {
     private final UserRepo repo;
+    private final PasswordRTRepo tokenRepo;
+    private final JavaMailSender mailSender;
 
     // Regex: mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 dígito y 1 carácter especial
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$");
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
-    public UserService(UserRepo repo) {
+    @Autowired
+    public UserService(UserRepo repo, PasswordRTRepo tokenRepo, JavaMailSender mailSender) {
         this.repo = repo;
+        this.tokenRepo = tokenRepo;
+        this.mailSender = mailSender;
     }
 
-    public void register(String username, String plainPwd) throws Exception {
-        // — Validaciones básicas —
+    /**
+     * Registro de un nuevo usuario.
+     */
+    public void register(String username, String plainPwd, String email) throws Exception {
+        // Validaciones básicas
         if (username == null || username.length() < 5) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El usuario debe tener al menos 5 caracteres");
         }
         if (plainPwd == null || !PASSWORD_PATTERN.matcher(plainPwd).matches()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener al menos 8 caracteres, " + "una mayúscula, una minúscula, un número y un carácter especial");
         }
         if (repo.findByUsername(username).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe un usuario con ese nombre");
         }
 
-        // — Generar par RSA y serializar a Base64 —
+        if (email == null || !EMAIL_PATTERN.matcher(email).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email no válido");
+        }
+        if (repo.findByEmail(email).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe un usuario con ese email");
+        }
+
+        // Generar par RSA
         KeyPair kp = RSAUtils.generateKeyPair();
         String pubB64 = RSAUtils.toBase64(kp.getPublic());
         String privB64 = RSAUtils.toBase64(kp.getPrivate());
 
-        // — Crear salt y hash de la contraseña —
+        // Crear salt y hash de la contraseña
         String salt = UUID.randomUUID().toString();
         String hash = PasswordsUtils.hashPassword(plainPwd, salt);
 
-        // — Derivar clave AES de la contraseña + salt (PBKDF2) —
+        // Derivar clave AES y cifrar la clave privada RSA
         SecretKey aesKey = deriveAesKeyFromPassword(plainPwd, salt);
-
-        // — Cifrar la clave privada RSA con la clave AES —
         String privEnc = AESUtils.encrypt(privB64, aesKey);
-        // — Persistir nuevo usuario —
+
+        // Persistir usuario
         User u = new User();
         u.setUsername(username);
+        u.setEmail(email);
         u.setSalt(salt);
         u.setPasswordHash(hash);
         u.setPublicKeyBase64(pubB64);
@@ -63,6 +87,9 @@ public class UserService {
         repo.save(u);
     }
 
+    /**
+     * Autenticación de usuario existente.
+     */
     public void authenticate(String username, String plainPwd) {
         var opt = repo.findByUsername(username);
         if (opt.isEmpty() || !PasswordsUtils.verifyPassword(plainPwd, opt.get().getSalt(), opt.get().getPasswordHash())) {
@@ -71,7 +98,87 @@ public class UserService {
     }
 
     /**
-     * Deriva una clave AES a partir de la contraseña y el salt, usando PBKDF2.
+     * Genera un token de recuperación, lo guarda y envía un correo.
+     */
+    // dentro de UserService.java
+    public void generateResetToken(String email) {
+        // 1) Buscar por email
+        var opt = repo.findByEmail(email);
+        if (opt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Email no registrado");
+        }
+
+        // 2) Eliminar tokens anteriores
+        tokenRepo.deleteByUsername(opt.get().getUsername());
+
+        // 3) Crear y guardar nuevo token
+        String token = UUID.randomUUID().toString();
+        PasswordResetToken prt = new PasswordResetToken();
+        prt.setToken(token);
+        prt.setUsername(opt.get().getUsername());
+        prt.setExpiryDate(LocalDateTime.now().plusHours(1));
+        tokenRepo.save(prt);
+
+        // 4) Enviar correo A LA DIRECCIÓN que vino
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setTo(email);   // ← enviamos a ese email
+        msg.setSubject("Anontalk: Recuperar contraseña");
+        msg.setText(
+                "Hola,\n\n" +
+                        "Para restablecer tu contraseña haz clic aquí:\n" +
+                        "https://tu-app.com/reset-password?token=" + token + "\n\n" +
+                        "Si no funciona como enlace, copia y pega este token:\n" +
+                        token + "\n\n" +
+                        "Este token expirará en 1 hora.\n"
+        );
+        mailSender.send(msg);
+    }
+
+    /**
+     * Valida el token y realiza el reseteo de contraseña + regeneración de claves RSA.
+     */
+    public void resetPassword(String token, String newPassword) throws Exception {
+        var optToken = tokenRepo.findByToken(token);
+        if (optToken.isEmpty() || optToken.get().getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token inválido o expirado");
+        }
+
+        String username = optToken.get().getUsername();
+        var optUser = repo.findByUsername(username);
+        if (optUser.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado");
+        }
+        User u = optUser.get();
+
+        // Validar nueva contraseña
+        if (!PASSWORD_PATTERN.matcher(newPassword).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener: 8+ caracteres, mayúscula, minúscula, número y carácter especial");
+        }
+
+        // Generar nuevo salt + hash
+        String salt = UUID.randomUUID().toString();
+        String hash = PasswordsUtils.hashPassword(newPassword, salt);
+
+        // Derivar AES y generar nuevo par RSA
+        SecretKey aesKey = deriveAesKeyFromPassword(newPassword, salt);
+        KeyPair kp = RSAUtils.generateKeyPair();
+        String pubB64 = RSAUtils.toBase64(kp.getPublic());
+        String privB64 = RSAUtils.toBase64(kp.getPrivate());
+        String privEnc = AESUtils.encrypt(privB64, aesKey);
+
+        // Actualizar usuario
+        u.setSalt(salt);
+        u.setPasswordHash(hash);
+        u.setPublicKeyBase64(pubB64);
+        u.setPrivateKeyEncryptedBase64(privEnc);
+        repo.save(u);
+
+        // Invalidar token
+        tokenRepo.delete(optToken.get());
+    }
+
+    /**
+     * Deriva una clave AES a partir de la contraseña y el salt.
      */
     private SecretKey deriveAesKeyFromPassword(String password, String salt) {
         try {

@@ -24,16 +24,15 @@ import managers.PopUpInfo;
 import managers.mensajes.Mensaje;
 import managers.mensajes.MensajeDTO;
 import managers.mensajes.MessageStore;
-import security.HybridCrypto;
-import security.KeyManager;
-import security.RSAUtils;
+import security.encryption.HybridCrypto;
+import security.encryption.KeyManager;
+import security.encryption.RSAUtils;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.PublicKey;
-import java.time.LocalDateTime;
 import java.util.List;
 
 public class MainInboxWindow extends Application {

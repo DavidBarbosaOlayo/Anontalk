@@ -1,4 +1,4 @@
-package security;
+package security.encryption;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;

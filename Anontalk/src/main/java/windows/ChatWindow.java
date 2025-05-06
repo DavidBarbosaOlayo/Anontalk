@@ -16,8 +16,8 @@ import managers.PopUpInfo;
 import managers.mensajes.Mensaje;
 import managers.mensajes.MensajeDTO;
 import managers.mensajes.MessageStore;
-import security.HybridCrypto;
-import security.RSAUtils;
+import security.encryption.HybridCrypto;
+import security.encryption.RSAUtils;
 
 import java.net.URI;
 import java.net.http.HttpClient;

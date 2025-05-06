@@ -1,5 +1,5 @@
 // src/main/java/security/RSAUtils.java
-package security;
+package security.encryption;
 
 import javax.crypto.Cipher;
 import java.security.*;

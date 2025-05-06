@@ -2,6 +2,8 @@ package managers.users;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import security.passwords.ForgotPasswordDTO;
+import security.passwords.ResetPasswordDTO;
 
 @RestController
 @RequestMapping("/api/users")
@@ -19,7 +21,11 @@ public class UserController {
      */
     @PostMapping("/register")
     public ResponseEntity<Void> register(@RequestBody UserDTO dto) throws Exception {
-        svc.register(dto.getUsername().trim(), dto.getPassword());
+        svc.register(
+                dto.getUsername().trim(),
+                dto.getPassword(),
+                dto.getEmail().trim()           // ← PASAMOS email
+        );
         return ResponseEntity.ok().build();
     }
 
@@ -38,6 +44,18 @@ public class UserController {
     @GetMapping("/{username}/publicKey")
     public ResponseEntity<String> publicKey(@PathVariable String username) {
         return repo.findByUsername(username).map(u -> ResponseEntity.ok(u.getPublicKeyBase64())).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordDTO dto) {
+        svc.generateResetToken(dto.getEmail().trim());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestBody ResetPasswordDTO dto) throws Exception {
+        svc.resetPassword(dto.getToken(), dto.getNewPassword());
+        return ResponseEntity.ok().build();
     }
 
     /**
