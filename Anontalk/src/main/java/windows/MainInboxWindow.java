@@ -1,3 +1,4 @@
+// MainInboxWindow.java
 package windows;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -52,8 +53,6 @@ public class MainInboxWindow extends Application {
         this.currentUser = currentUser;
     }
 
-    /* =========================================================== */
-
     @Override
     public void start(Stage stage) {
         this.stage = stage;
@@ -64,15 +63,14 @@ public class MainInboxWindow extends Application {
             System.exit(0);
         });
 
-        /* ---------- botón de perfil + bienvenida ---------- */
-        // Icono de perfil (24×24 px)
+        // botón de perfil + bienvenida
         ImageView profileIcon = new ImageView(new Image(getClass().getResourceAsStream("/user.png"), 24, 24, true, true));
         Button btnPerfil = new Button();
         btnPerfil.setGraphic(profileIcon);
         btnPerfil.setStyle("-fx-background-color: transparent;");
         btnPerfil.setOnAction(e -> {
             try {
-                new ProfileWindow(currentUser).show();
+                new ProfileWindow(currentUser, this.stage).show();
             } catch (Exception ex) {
                 pop.mostrarAlertaError("Error", "No se pudo abrir la ventana de perfil.");
             }
@@ -84,7 +82,7 @@ public class MainInboxWindow extends Application {
         HBox leftBox = new HBox(10, btnPerfil, lblWelcome);
         leftBox.setAlignment(Pos.CENTER_LEFT);
 
-        /* ---------- botones acción ---------- */
+        // botones de acción
         Button btnNuevo = new Button("Nuevo Mensaje");
         btnNuevo.setOnAction(e -> showSendDialog());
 
@@ -105,11 +103,11 @@ public class MainInboxWindow extends Application {
         BorderPane topBar = new BorderPane(leftBox, null, rightBox, null, null);
         topBar.setPadding(new Insets(10));
 
-        /* ---------- pestañas de mensajes ---------- */
+        // pestañas de mensajes
         TabPane tabs = new TabPane(new Tab("Bandeja de Entrada", createTable(true)), new Tab("Mensajes Enviados", createTable(false)));
         tabs.getTabs().forEach(t -> t.setClosable(false));
 
-        /* ---------- escena principal ---------- */
+        // escena principal
         BorderPane root = new BorderPane();
         root.setTop(topBar);
         root.setCenter(tabs);
@@ -120,17 +118,12 @@ public class MainInboxWindow extends Application {
         stage.setScene(scene);
         stage.show();
 
-        /* ---------- carga inicial + polling ---------- */
+        // carga inicial + polling
         loadMessages();
         refresher = new Timeline(new KeyFrame(Duration.seconds(5), ev -> refreshInbox()));
         refresher.setCycleCount(Timeline.INDEFINITE);
         refresher.play();
     }
-
-
-    /* =========================================================== */
-    /*  tablas y botones  */
-    /* =========================================================== */
 
     private TableView<Mensaje> createTable(boolean inbox) {
         var list = inbox ? MessageStore.inboxMessages : MessageStore.sentMessages;
@@ -143,7 +136,6 @@ public class MainInboxWindow extends Application {
         TableColumn<Mensaje, String> colAsunto = new TableColumn<>("Asunto");
         colAsunto.setCellValueFactory(new PropertyValueFactory<>("asunto"));
         colAsunto.setPrefWidth(580);
-
 
         TableColumn<Mensaje, Void> colDel = new TableColumn<>("");
         colDel.setPrefWidth(40);
@@ -181,10 +173,6 @@ public class MainInboxWindow extends Application {
         return table;
     }
 
-    /* =========================================================== */
-    /*  Carga de mensajes  */
-    /* =========================================================== */
-
     private void loadMessages() {
         refreshInbox();
         refreshSent();
@@ -214,8 +202,6 @@ public class MainInboxWindow extends Application {
         }
     }
 
-    /* ---------- descifrado helpers ---------- */
-
     private Mensaje dtoToMensajeInbox(MensajeDTO dto) {
         String plain;
         try {
@@ -236,15 +222,10 @@ public class MainInboxWindow extends Application {
         return new Mensaje(dto.getId(), dto.getDestinatario(), dto.getAsunto(), plain);
     }
 
-    /* =========================================================== */
-    /*  enviar “nuevo mensaje rápido”  */
-    /* =========================================================== */
-
     private void showSendDialog() {
         Stage dialog = new Stage();
         dialog.setTitle("Redactar mensaje");
 
-        // --- Campos de entrada ---
         TextField txtPara = new TextField();
         txtPara.setPromptText("Para");
 
@@ -256,56 +237,41 @@ public class MainInboxWindow extends Application {
         txtCuerpo.setWrapText(true);
         txtCuerpo.setPrefHeight(200);
 
-        // --- Botones ---
         Button btnEnviar = new Button("Enviar");
         Button btnCancelar = new Button("Cancelar");
         btnCancelar.setOnAction(e -> dialog.close());
 
         btnEnviar.setOnAction(e -> {
             String dest = txtPara.getText().trim();
-            String asunto = txtAsunto.getText().trim();
             String cuerpo = txtCuerpo.getText().trim();
-
             if (dest.isBlank() || cuerpo.isBlank()) {
                 pop.mostrarAlertaError("Error", "Completa al menos el destinatario y el cuerpo.");
                 return;
             }
-
             try {
-                // 1. Obtener clave pública del destinatario y comprobar existencia
                 HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + dest + "/publicKey")).GET().build();
                 HttpResponse<String> pkRes = http.send(pkReq, HttpResponse.BodyHandlers.ofString());
 
                 if (pkRes.statusCode() == 404) {
-                    // Usuario no encontrado
-                    System.err.println("ERROR: Usuario '" + dest + "' no existe (404).");
-                    pop.mostrarAlertaError("Usuario desconocido", "El usuario '" + dest + "' no existe en el sistema.");
+                    pop.mostrarAlertaError("Usuario desconocido", "El usuario '" + dest + "' no existe.");
                     return;
                 } else if (pkRes.statusCode() != 200) {
-                    // Otro error HTTP
-                    System.err.println("ERROR: al solicitar clave pública de '" + dest + "'. Código: " + pkRes.statusCode());
-                    pop.mostrarAlertaError("Error servidor", "No se pudo verificar el usuario. Inténtalo más tarde.");
+                    pop.mostrarAlertaError("Error servidor", "No se pudo verificar el usuario.");
                     return;
                 }
 
-                String pubB64 = pkRes.body();
-                PublicKey destPk = RSAUtils.publicKeyFromBase64(pubB64);
-
-                // 2. Cifrado híbrido
+                PublicKey destPk = RSAUtils.publicKeyFromBase64(pkRes.body());
                 HybridCrypto.HybridPayload p = HybridCrypto.encrypt(cuerpo, destPk);
 
-                // 3. Crear DTO
                 MensajeDTO dto = new MensajeDTO();
                 dto.setRemitente(currentUser);
                 dto.setDestinatario(dest);
-                dto.setAsunto(asunto);
+                dto.setAsunto(txtAsunto.getText().trim());
                 dto.setCipherTextBase64(p.cipherB64());
                 dto.setEncKeyBase64(p.encKeyB64());
                 dto.setIvBase64(p.ivB64());
 
                 String json = mapper.writeValueAsString(dto);
-
-                // 4. Enviar mensaje al backend
                 HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
 
                 http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(r -> {
@@ -316,13 +282,10 @@ public class MainInboxWindow extends Application {
                             pop.mostrarAlertaInformativa("Enviado", "Mensaje enviado con éxito.");
                         });
                     } else {
-                        System.err.println("ERROR: envío mensaje fallido, status=" + r.statusCode());
                         Platform.runLater(() -> pop.mostrarAlertaError("Error", "No se pudo enviar el mensaje."));
                     }
                 });
-
             } catch (Exception ex) {
-                System.err.println("ERROR inesperado al enviar mensaje: " + ex.getMessage());
                 pop.mostrarAlertaError("Error", "Fallo al cifrar o enviar el mensaje.");
             }
         });
@@ -339,12 +302,6 @@ public class MainInboxWindow extends Application {
         dialog.setScene(scene);
         dialog.show();
     }
-
-
-
-    /* =========================================================== */
-    /*  eliminar mensaje  */
-    /* =========================================================== */
 
     private void deleteMessage(Mensaje msg) {
         MessageStore.inboxMessages.removeIf(m -> m.getId().equals(msg.getId()));
