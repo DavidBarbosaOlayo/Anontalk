@@ -2,6 +2,7 @@ package managers.users;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import security.passwords.ChangeEmailDTO;
 import security.passwords.ChangePasswordDTO;
 import security.passwords.ForgotPasswordDTO;
 import security.passwords.ResetPasswordDTO;
@@ -64,6 +65,18 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/change-email")
+    public ResponseEntity<Void> changeEmail(@RequestBody ChangeEmailDTO dto) {
+        svc.changeEmail(dto.getUsername(), dto.getNewEmail());
+        return ResponseEntity.ok().build();
+    }
+
+    /** Eliminar cuenta */
+    @DeleteMapping("/{username}")
+    public ResponseEntity<Void> deleteAccount(@PathVariable String username) {
+        svc.deleteAccount(username);
+        return ResponseEntity.noContent().build();
+    }
 
     /**
      * DTO para la respuesta de login

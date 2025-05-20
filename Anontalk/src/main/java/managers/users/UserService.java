@@ -239,4 +239,22 @@ public class UserService {
         repo.save(u);
     }
 
+    // dentro de UserService.java
+    public void changeEmail(String username, String newEmail) {
+        if (newEmail == null || !EMAIL_PATTERN.matcher(newEmail).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email no válido");
+        }
+        if (repo.findByEmail(newEmail).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email ya registrado");
+        }
+        User u = repo.findByUsername(username).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        u.setEmail(newEmail);
+        repo.save(u);
+    }
+
+    public void deleteAccount(String username) {
+        User u = repo.findByUsername(username).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        repo.delete(u);
+    }
+
 }
