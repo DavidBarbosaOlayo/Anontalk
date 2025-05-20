@@ -31,12 +31,15 @@ public class UserController {
     /**
      * Login: si OK 200, si no lanza 401.
      */
+    public static record LoginResponse(String salt, String publicKeyBase64, String privateKeyEncryptedBase64,
+                                       boolean requirePasswordChange) {
+    }
+
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody UserDTO dto) {
-        svc.authenticate(dto.getUsername().trim(), dto.getPassword());
-        // Tras autenticar, devolvemos salt + claves en Base64
+        boolean tokenFlow = svc.authenticate(dto.getUsername().trim(), dto.getPassword());
         var user = repo.findByUsername(dto.getUsername().trim()).get();
-        var resp = new LoginResponse(user.getSalt(), user.getPublicKeyBase64(), user.getPrivateKeyEncryptedBase64());
+        var resp = new LoginResponse(user.getSalt(), user.getPublicKeyBase64(), user.getPrivateKeyEncryptedBase64(),tokenFlow);
         return ResponseEntity.ok(resp);
     }
 
@@ -71,17 +74,13 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-    /** Eliminar cuenta */
+    /**
+     * Eliminar cuenta
+     */
     @DeleteMapping("/{username}")
     public ResponseEntity<Void> deleteAccount(@PathVariable String username) {
         svc.deleteAccount(username);
         return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * DTO para la respuesta de login
-     */
-    public static record LoginResponse(String salt, String publicKeyBase64, String privateKeyEncryptedBase64) {
     }
 }
 

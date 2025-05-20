@@ -2,14 +2,17 @@ package windows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
+import javafx.util.Pair;
 import managers.PopUpInfo;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -31,22 +34,9 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
-@SpringBootApplication(scanBasePackages = {
-        "windows",
-        "managers.mensajes",
-        "managers.users",
-        "security.passwords"
-})
-@EnableJpaRepositories(basePackages = {
-        "managers.mensajes",
-        "managers.users",
-        "security.passwords"
-})
-@EntityScan(basePackages = {
-        "managers.mensajes",
-        "managers.users",
-        "security.passwords"
-})
+@SpringBootApplication(scanBasePackages = {"windows", "managers.mensajes", "managers.users", "security.passwords"})
+@EnableJpaRepositories(basePackages = {"managers.mensajes", "managers.users", "security.passwords"})
+@EntityScan(basePackages = {"managers.mensajes", "managers.users", "security.passwords"})
 public class LoginWindow extends Application {
 
     private static ConfigurableApplicationContext springCtx;
@@ -72,7 +62,7 @@ public class LoginWindow extends Application {
         });
 
         // Campos
-        TextField txtUser  = new TextField();
+        TextField txtUser = new TextField();
         txtUser.setPromptText("Usuario");
         PasswordField txtPwd = new PasswordField();
         txtPwd.setPromptText("Contraseña");
@@ -80,16 +70,12 @@ public class LoginWindow extends Application {
         txtEmail.setPromptText("Email");
 
         Button btnLogin = new Button("Iniciar Sesión");
-        Button btnReg   = new Button("Registrarse");
+        Button btnReg = new Button("Registrarse");
         Hyperlink lnkForgot = new Hyperlink("¿Has olvidado tu contraseña?");
 
         // Acciones
         btnLogin.setOnAction(e -> login(txtUser.getText().trim(), txtPwd.getText().trim()));
-        btnReg  .setOnAction(e -> register(
-                txtUser.getText().trim(),
-                txtPwd.getText().trim(),
-                txtEmail.getText().trim()
-        ));
+        btnReg.setOnAction(e -> register(txtUser.getText().trim(), txtPwd.getText().trim(), txtEmail.getText().trim()));
         lnkForgot.setOnAction(e -> forgotPasswordDialog());
 
         // Layout
@@ -125,30 +111,18 @@ public class LoginWindow extends Application {
             }
             try {
                 JsonNode body = mapper.createObjectNode().put("email", email.trim());
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/users/forgot-password"))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                        .build();
+                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/forgot-password")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
 
-                http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                        .thenAccept(resp -> Platform.runLater(() -> {
-                            switch (resp.statusCode()) {
-                                case 200 -> pop.mostrarAlertaInformativa(
-                                        "Email enviado",
-                                        "Revisa tu bandeja en " + email.trim() +
-                                                " para recuperar tu contraseña."
-                                );
-                                case 404 -> pop.mostrarAlertaError(
-                                        "Email no registrado",
-                                        "No existe cuenta asociada a " + email.trim()
-                                );
-                                default -> pop.mostrarAlertaError(
-                                        "Error",
-                                        "No se pudo solicitar la recuperación. Intenta más tarde."
-                                );
-                            }
-                        }));
+                http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> Platform.runLater(() -> {
+                    switch (resp.statusCode()) {
+                        case 200 ->
+                                pop.mostrarAlertaInformativa("Email enviado", "Revisa tu bandeja en " + email.trim() + " para recuperar tu contraseña.");
+                        case 404 ->
+                                pop.mostrarAlertaError("Email no registrado", "No existe cuenta asociada a " + email.trim());
+                        default ->
+                                pop.mostrarAlertaError("Error", "No se pudo solicitar la recuperación. Intenta más tarde.");
+                    }
+                }));
             } catch (Exception ex) {
                 pop.mostrarAlertaError("Error", "Falló la solicitud de recuperación.");
             }
@@ -162,26 +136,16 @@ public class LoginWindow extends Application {
             return;
         }
         try {
-            JsonNode body = mapper.createObjectNode()
-                    .put("username", user)
-                    .put("password", pwd)
-                    .put("email", email);
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/users/register"))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                    .build();
+            JsonNode body = mapper.createObjectNode().put("username", user).put("password", pwd).put("email", email);
+            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/register")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
 
-            http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(resp -> Platform.runLater(() -> {
-                        if (resp.statusCode() == 200)
-                            pop.mostrarAlertaInformativa("Éxito", "Usuario registrado.");
-                        else if (resp.statusCode() == 409)
-                            pop.mostrarAlertaError("Error", "Usuario o email ya registrado.");
-                        else
-                            pop.mostrarAlertaError("Error", "Registro fallido.");
-                    }));
-        } catch (Exception ignored) { }
+            http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> Platform.runLater(() -> {
+                if (resp.statusCode() == 200) pop.mostrarAlertaInformativa("Éxito", "Usuario registrado.");
+                else if (resp.statusCode() == 409) pop.mostrarAlertaError("Error", "Usuario o email ya registrado.");
+                else pop.mostrarAlertaError("Error", "Registro fallido.");
+            }));
+        } catch (Exception ignored) {
+        }
     }
 
     private void login(String user, String pwd) {
@@ -190,52 +154,114 @@ public class LoginWindow extends Application {
             return;
         }
         try {
-            JsonNode body = mapper.createObjectNode()
-                    .put("username", user)
-                    .put("password", pwd);
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/users/login"))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                    .build();
+            JsonNode body = mapper.createObjectNode().put("username", user).put("password", pwd);
+            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/login")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
 
-            http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(resp -> {
-                        if (resp.statusCode() == 200) {
-                            handleLoginSuccess(resp.body(), user, pwd);
-                        } else {
-                            Platform.runLater(() ->
-                                    pop.mostrarAlertaError("Error", "Usuario o contraseña incorrectos."));
-                        }
-                    });
-        } catch (Exception ignored) { }
+            http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
+                if (resp.statusCode() == 200) {
+                    handleLoginSuccess(resp.body(), user, pwd);
+                } else {
+                    Platform.runLater(() -> pop.mostrarAlertaError("Error", "Usuario o contraseña incorrectos."));
+                }
+            });
+        } catch (Exception ignored) {
+        }
     }
+
+    // LoginWindow.java
 
     private void handleLoginSuccess(String respBody, String user, String pwd) {
         try {
             JsonNode root = mapper.readTree(respBody);
-            String salt    = root.get("salt").asText();
-            String pubB64  = root.get("publicKeyBase64").asText();
+            String salt = root.get("salt").asText();
+            String pubB64 = root.get("publicKeyBase64").asText();
             String privEnc = root.get("privateKeyEncryptedBase64").asText();
+            boolean requireChange = root.get("requirePasswordChange").asBoolean();
 
+            // Derivamos y cargamos claves como antes
             SecretKey aesKey = deriveAesKeyFromPassword(pwd, salt);
             String privB64 = AESUtils.decrypt(privEnc, aesKey);
             PrivateKey privKey = RSAUtils.privateKeyFromBase64(privB64);
-            PublicKey  pubKey  = RSAUtils.publicKeyFromBase64(pubB64);
-
+            PublicKey pubKey = RSAUtils.publicKeyFromBase64(pubB64);
             KeyManager.setPrivateKey(privKey);
             KeyManager.setPublicKey(pubKey);
 
-            Platform.runLater(() -> {
-                pop.mostrarAlertaInformativa("Éxito", "Bienvenido, " + user);
-                primaryStage.close();
-                try { new MainInboxWindow(user).start(new Stage()); }
-                catch (Exception ignore) { }
-            });
+            if (requireChange) {
+                // mostar diálogo para cambiar contraseña
+                Platform.runLater(() -> showForceChangeDialog(user, pwd));
+            } else {
+                // flujo normal
+                Platform.runLater(() -> {
+                    pop.mostrarAlertaInformativa("Éxito", "Bienvenido, " + user);
+                    primaryStage.close();
+                    try {
+                        new MainInboxWindow(user).start(new Stage());
+                    } catch (Exception ignore) {
+                    }
+                });
+            }
         } catch (Exception ex) {
-            Platform.runLater(() ->
-                    pop.mostrarAlertaError("Error", "No se pudo procesar la respuesta del servidor."));
+            Platform.runLater(() -> pop.mostrarAlertaError("Error", "No se pudo procesar la respuesta del servidor."));
         }
+    }
+
+    /**
+     * Diálogo modal que pide nueva contraseña y la envía al endpoint change-password
+     */
+    private void showForceChangeDialog(String username, String token) {
+        Dialog<Pair<String, String>> dlg = new Dialog<>();
+        dlg.setTitle("Cambiar contraseña temporal");
+        dlg.setHeaderText("Has iniciado con un token. Por seguridad, elige una nueva contraseña.");
+
+        // campos
+        PasswordField txtNew = new PasswordField();
+        txtNew.setPromptText("Nueva contraseña");
+        PasswordField txtConfirm = new PasswordField();
+        txtConfirm.setPromptText("Repetir contraseña");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.add(new Label("Nueva:"), 0, 0);
+        grid.add(txtNew, 1, 0);
+        grid.add(new Label("Repetir:"), 0, 1);
+        grid.add(txtConfirm, 1, 1);
+        dlg.getDialogPane().setContent(grid);
+
+        ButtonType btnSave = new ButtonType("Guardar", ButtonBar.ButtonData.OK_DONE);
+        dlg.getDialogPane().getButtonTypes().addAll(btnSave, ButtonType.CANCEL);
+
+        // validación inline
+        Node saveButton = dlg.getDialogPane().lookupButton(btnSave);
+        saveButton.setDisable(true);
+        txtNew.textProperty().addListener((observable, oldValue, newValue) -> saveButton.setDisable(newValue.isBlank() || !newValue.equals(txtConfirm.getText())));
+
+        txtConfirm.textProperty().addListener((observable, oldValue, newValue) -> saveButton.setDisable(newValue.isBlank() || !newValue.equals(txtNew.getText())));
+
+        dlg.setResultConverter(bt -> {
+            if (bt == btnSave) return new Pair<>(txtNew.getText(), txtConfirm.getText());
+            return null;
+        });
+
+        dlg.showAndWait().ifPresent(pair -> {
+            String newPwd = pair.getKey();
+            // Llamada async a change-password
+            ObjectNode body = mapper.createObjectNode().put("username", username).put("oldPassword", token).put("newPassword", newPwd);
+            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/change-password")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
+            http.sendAsync(req, HttpResponse.BodyHandlers.discarding()).thenAccept(resp -> Platform.runLater(() -> {
+                if (resp.statusCode() == 200) {
+                    pop.mostrarAlertaInformativa("Éxito", "Contraseña actualizada.");
+                    // abrir bandeja
+                    primaryStage.close();
+                    try {
+                        new MainInboxWindow(username).start(new Stage());
+                    } catch (Exception ignore) {
+                    }
+                } else {
+                    pop.mostrarAlertaError("Error", "No se pudo cambiar la contraseña.");
+                }
+            }));
+        });
     }
 
     private SecretKey deriveAesKeyFromPassword(String pwd, String salt) {

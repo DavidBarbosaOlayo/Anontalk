@@ -90,7 +90,7 @@ public class UserService {
     /**
      * Autenticación de usuario existente.
      */
-    public void authenticate(String username, String plainPwd) {
+    public boolean authenticate(String username, String plainPwd) {
         var opt = repo.findByUsername(username);
         if (opt.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos");
@@ -99,22 +99,22 @@ public class UserService {
 
         // 1) Login normal
         if (PasswordsUtils.verifyPassword(plainPwd, user.getSalt(), user.getPasswordHash())) {
-            return;
+            return false;    // no es flujo token
         }
 
         // 2) Login con token
         var optToken = tokenRepo.findByToken(plainPwd);
         if (optToken.isPresent() && !optToken.get().getExpiryDate().isBefore(LocalDateTime.now())) {
             try {
-                // aquí entra ahora sin choque con el patrón
+                // resetea la contraseña internamente al token
                 resetPassword(plainPwd, plainPwd);
-                return;
+                return true;  // flujo token
             } catch (Exception e) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token inválido o expirado");
             }
         }
 
-        // 3) Si no coincide ni con pwd ni con token:
+        // 3) si no coincide ni con pwd ni con token:
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos");
     }
 
