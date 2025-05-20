@@ -64,10 +64,27 @@ public class MainInboxWindow extends Application {
             System.exit(0);
         });
 
-        /* ---------- barra superior ---------- */
+        /* ---------- botón de perfil + bienvenida ---------- */
+        // Icono de perfil (24×24 px)
+        ImageView profileIcon = new ImageView(new Image(getClass().getResourceAsStream("/user.png"), 24, 24, true, true));
+        Button btnPerfil = new Button();
+        btnPerfil.setGraphic(profileIcon);
+        btnPerfil.setStyle("-fx-background-color: transparent;");
+        btnPerfil.setOnAction(e -> {
+            try {
+                new ProfileWindow(currentUser).show();
+            } catch (Exception ex) {
+                pop.mostrarAlertaError("Error", "No se pudo abrir la ventana de perfil.");
+            }
+        });
+
         Label lblWelcome = new Label("Bienvenido, " + currentUser);
         lblWelcome.getStyleClass().add("label2");
 
+        HBox leftBox = new HBox(10, btnPerfil, lblWelcome);
+        leftBox.setAlignment(Pos.CENTER_LEFT);
+
+        /* ---------- botones acción ---------- */
         Button btnNuevo = new Button("Nuevo Mensaje");
         btnNuevo.setOnAction(e -> showSendDialog());
 
@@ -82,15 +99,17 @@ public class MainInboxWindow extends Application {
             }
         });
 
-        BorderPane topBar = new BorderPane(new HBox(lblWelcome), null, new HBox(10, btnNuevo, btnCerrar), null, null);
-        BorderPane.setAlignment(lblWelcome, Pos.CENTER_LEFT);
+        HBox rightBox = new HBox(10, btnNuevo, btnCerrar);
+        rightBox.setAlignment(Pos.CENTER_RIGHT);
+
+        BorderPane topBar = new BorderPane(leftBox, null, rightBox, null, null);
         topBar.setPadding(new Insets(10));
 
-        /* ---------- tablas ---------- */
+        /* ---------- pestañas de mensajes ---------- */
         TabPane tabs = new TabPane(new Tab("Bandeja de Entrada", createTable(true)), new Tab("Mensajes Enviados", createTable(false)));
         tabs.getTabs().forEach(t -> t.setClosable(false));
 
-        /* ---------- escena ---------- */
+        /* ---------- escena principal ---------- */
         BorderPane root = new BorderPane();
         root.setTop(topBar);
         root.setCenter(tabs);
@@ -101,12 +120,13 @@ public class MainInboxWindow extends Application {
         stage.setScene(scene);
         stage.show();
 
-        /* ---------- carga + polling ---------- */
+        /* ---------- carga inicial + polling ---------- */
         loadMessages();
         refresher = new Timeline(new KeyFrame(Duration.seconds(5), ev -> refreshInbox()));
         refresher.setCycleCount(Timeline.INDEFINITE);
         refresher.play();
     }
+
 
     /* =========================================================== */
     /*  tablas y botones  */
@@ -253,23 +273,18 @@ public class MainInboxWindow extends Application {
 
             try {
                 // 1. Obtener clave pública del destinatario y comprobar existencia
-                HttpRequest pkReq = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/users/" + dest + "/publicKey"))
-                        .GET().build();
+                HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + dest + "/publicKey")).GET().build();
                 HttpResponse<String> pkRes = http.send(pkReq, HttpResponse.BodyHandlers.ofString());
 
                 if (pkRes.statusCode() == 404) {
                     // Usuario no encontrado
                     System.err.println("ERROR: Usuario '" + dest + "' no existe (404).");
-                    pop.mostrarAlertaError("Usuario desconocido",
-                            "El usuario '" + dest + "' no existe en el sistema.");
+                    pop.mostrarAlertaError("Usuario desconocido", "El usuario '" + dest + "' no existe en el sistema.");
                     return;
                 } else if (pkRes.statusCode() != 200) {
                     // Otro error HTTP
-                    System.err.println("ERROR: al solicitar clave pública de '" + dest +
-                            "'. Código: " + pkRes.statusCode());
-                    pop.mostrarAlertaError("Error servidor",
-                            "No se pudo verificar el usuario. Inténtalo más tarde.");
+                    System.err.println("ERROR: al solicitar clave pública de '" + dest + "'. Código: " + pkRes.statusCode());
+                    pop.mostrarAlertaError("Error servidor", "No se pudo verificar el usuario. Inténtalo más tarde.");
                     return;
                 }
 
@@ -291,26 +306,20 @@ public class MainInboxWindow extends Application {
                 String json = mapper.writeValueAsString(dto);
 
                 // 4. Enviar mensaje al backend
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/messages/send"))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(json))
-                        .build();
+                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
 
-                http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                        .thenAccept(r -> {
-                            if (r.statusCode() == 200) {
-                                Platform.runLater(() -> {
-                                    refreshSent();
-                                    dialog.close();
-                                    pop.mostrarAlertaInformativa("Enviado", "Mensaje enviado con éxito.");
-                                });
-                            } else {
-                                System.err.println("ERROR: envío mensaje fallido, status=" + r.statusCode());
-                                Platform.runLater(() ->
-                                        pop.mostrarAlertaError("Error", "No se pudo enviar el mensaje."));
-                            }
+                http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(r -> {
+                    if (r.statusCode() == 200) {
+                        Platform.runLater(() -> {
+                            refreshSent();
+                            dialog.close();
+                            pop.mostrarAlertaInformativa("Enviado", "Mensaje enviado con éxito.");
                         });
+                    } else {
+                        System.err.println("ERROR: envío mensaje fallido, status=" + r.statusCode());
+                        Platform.runLater(() -> pop.mostrarAlertaError("Error", "No se pudo enviar el mensaje."));
+                    }
+                });
 
             } catch (Exception ex) {
                 System.err.println("ERROR inesperado al enviar mensaje: " + ex.getMessage());
