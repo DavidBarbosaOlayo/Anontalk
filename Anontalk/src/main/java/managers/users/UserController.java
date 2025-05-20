@@ -2,6 +2,7 @@ package managers.users;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import security.passwords.ChangePasswordDTO;
 import security.passwords.ForgotPasswordDTO;
 import security.passwords.ResetPasswordDTO;
 
@@ -21,10 +22,7 @@ public class UserController {
      */
     @PostMapping("/register")
     public ResponseEntity<Void> register(@RequestBody UserDTO dto) throws Exception {
-        svc.register(
-                dto.getUsername().trim(),
-                dto.getPassword(),
-                dto.getEmail().trim()           // ← PASAMOS email
+        svc.register(dto.getUsername().trim(), dto.getPassword(), dto.getEmail().trim()           // ← PASAMOS email
         );
         return ResponseEntity.ok().build();
     }
@@ -58,9 +56,19 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordDTO dto) throws Exception {
+        // Ahora usamos dto.getUsername() en lugar de AuthenticationPrincipal
+        svc.changePassword(dto.getUsername(), dto.getOldPassword(), dto.getNewPassword());
+        return ResponseEntity.ok().build();
+    }
+
+
     /**
      * DTO para la respuesta de login
      */
     public static record LoginResponse(String salt, String publicKeyBase64, String privateKeyEncryptedBase64) {
     }
 }
+

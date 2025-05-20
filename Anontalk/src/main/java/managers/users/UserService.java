@@ -92,10 +92,32 @@ public class UserService {
      */
     public void authenticate(String username, String plainPwd) {
         var opt = repo.findByUsername(username);
-        if (opt.isEmpty() || !PasswordsUtils.verifyPassword(plainPwd, opt.get().getSalt(), opt.get().getPasswordHash())) {
+        if (opt.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos");
         }
+        User user = opt.get();
+
+        // 1) Login normal
+        if (PasswordsUtils.verifyPassword(plainPwd, user.getSalt(), user.getPasswordHash())) {
+            return;
+        }
+
+        // 2) Login con token
+        var optToken = tokenRepo.findByToken(plainPwd);
+        if (optToken.isPresent() && !optToken.get().getExpiryDate().isBefore(LocalDateTime.now())) {
+            try {
+                // aquí entra ahora sin choque con el patrón
+                resetPassword(plainPwd, plainPwd);
+                return;
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token inválido o expirado");
+            }
+        }
+
+        // 3) Si no coincide ni con pwd ni con token:
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos");
     }
+
 
     /**
      * Genera un token de recuperación, lo guarda y envía un correo.
@@ -121,16 +143,9 @@ public class UserService {
 
         // 4) Enviar correo A LA DIRECCIÓN que vino
         SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setTo(email);   // ← enviamos a ese email
-        msg.setSubject("Anontalk: Recuperar contraseña");
-        msg.setText(
-                "Hola,\n\n" +
-                        "Para restablecer tu contraseña haz clic aquí:\n" +
-                        "https://tu-app.com/reset-password?token=" + token + "\n\n" +
-                        "Si no funciona como enlace, copia y pega este token:\n" +
-                        token + "\n\n" +
-                        "Este token expirará en 1 hora.\n"
-        );
+        msg.setTo(email);
+        msg.setSubject("Anontalk: Tu contraseña temporal");
+        msg.setText("Hola,\n\n" + "Tu contraseña temporal es:\n\n" + token + "\n\n" + "Cópiala y úsala para iniciar sesión. " + "Después podrás definir tu nueva contraseña desde tu perfil.\n\n" + "Este código expirará en 1 hora.");
         mailSender.send(msg);
     }
 
@@ -143,19 +158,16 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token inválido o expirado");
         }
 
-        String username = optToken.get().getUsername();
-        var optUser = repo.findByUsername(username);
-        if (optUser.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado");
-        }
-        User u = optUser.get();
+        var username = optToken.get().getUsername();
+        User u = repo.findByUsername(username).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
-        // Validar nueva contraseña
-        if (!PASSWORD_PATTERN.matcher(newPassword).matches()) {
+        // ← Solo validamos patrón si no es el flujo interno de token-based reset
+        boolean isTokenFlow = token.equals(newPassword);
+        if (!isTokenFlow && !PASSWORD_PATTERN.matcher(newPassword).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener: 8+ caracteres, mayúscula, minúscula, número y carácter especial");
         }
 
-        // Generar nuevo salt + hash
+        // Generar nuevo salt + hash (token en este caso funciona como pwd)
         String salt = UUID.randomUUID().toString();
         String hash = PasswordsUtils.hashPassword(newPassword, salt);
 
@@ -190,4 +202,41 @@ public class UserService {
             throw new RuntimeException("Error al derivar clave AES: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * Permite al usuario autenticado cambiar su propia contraseña.
+     */
+    public void changePassword(String username, String oldPwd, String newPwd) throws Exception {
+        // 1) Validar formato de nueva contraseña
+        if (!PASSWORD_PATTERN.matcher(newPwd).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial");
+        }
+
+        // 2) Cargar usuario
+        User u = repo.findByUsername(username).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        // 3) Verificar contraseña actual
+        if (!PasswordsUtils.verifyPassword(oldPwd, u.getSalt(), u.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Contraseña actual incorrecta");
+        }
+
+        // 4) Desencriptar privateKey con la clave derivada de oldPwd
+        SecretKey oldKey = deriveAesKeyFromPassword(oldPwd, u.getSalt());
+        String privB64 = AESUtils.decrypt(u.getPrivateKeyEncryptedBase64(), oldKey);
+
+        // 5) Generar nuevo salt + hash
+        String newSalt = UUID.randomUUID().toString();
+        String newHash = PasswordsUtils.hashPassword(newPwd, newSalt);
+
+        // 6) Encriptar la misma privateKey con la nueva clave derivada de newPwd
+        SecretKey newKey = deriveAesKeyFromPassword(newPwd, newSalt);
+        String newPrivEnc = AESUtils.encrypt(privB64, newKey);
+
+        // 7) Guardar cambios
+        u.setSalt(newSalt);
+        u.setPasswordHash(newHash);
+        u.setPrivateKeyEncryptedBase64(newPrivEnc);
+        repo.save(u);
+    }
+
 }
