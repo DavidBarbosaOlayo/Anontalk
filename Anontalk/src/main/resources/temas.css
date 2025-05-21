@@ -136,3 +136,12 @@
     -fx-text-fill: #102C54;
     -fx-font-weight: bold;
 }
+
+/* Quitar resaltado, pressed y foco del botón “Guardar” en tema claro */
+.save-button:hover,
+.save-button:pressed,
+.save-button:focused {
+    -fx-background-color: transparent;    /* sin fondo al hover/press/focus */
+    -fx-focus-color: transparent;         /* anula el color del foco */
+    -fx-faint-focus-color: transparent;   /* anula el halo de foco */
+}

@@ -1,3 +1,5 @@
+/* tema2.css — Tema oscuro */
+
 /* Fuente y fondo general */
 .root {
     -fx-font-family: "Roboto", "Segoe UI", sans-serif;
@@ -5,12 +7,12 @@
     -fx-text-fill: #ffffff;
 }
 
-/* Asegura que el ScrollPane deje ver el fondo oscuro de .root */
+/* ScrollPane y su viewport con fondo oscuro */
 .scroll-pane {
-    -fx-background-color: transparent;
+    -fx-background-color: #202124;
 }
 .scroll-pane .viewport {
-    -fx-background-color: transparent;
+    -fx-background-color: #202124;
 }
 
 /* Encabezado del chat */
@@ -33,8 +35,8 @@
 
 /* ScrollPane para el mensaje */
 .chat-scrollpane {
-    -fx-background: transparent;
-    -fx-background-color: transparent;
+    -fx-background: #202124;
+    -fx-background-color: #202124;
 }
 
 /* Área de composición del mensaje */
@@ -68,10 +70,10 @@
     -fx-border-radius: 5px;
 }
 
-/* Botones normales — ahora en fondo oscuro */
+/* Botones normales — fondo oscuro */
 .button {
-    -fx-background-color: #424242;   /* gris oscuro */
-    -fx-text-fill: #ffffff;          /* texto en blanco */
+    -fx-background-color: #424242;
+    -fx-text-fill: #ffffff;
     -fx-font-size: 14px;
     -fx-font-weight: bold;
     -fx-padding: 8px 15px;
@@ -98,34 +100,6 @@
     -fx-text-fill: #ffffff;
 }
 
-/* Botón Eliminar cuenta — rojo oscuro */
-.delete-button {
-    -fx-background-color: #d32f2f;
-    -fx-text-fill: #ffffff;
-    -fx-font-weight: bold;
-}
-.delete-button:hover {
-    -fx-background-color: #c62828;
-}
-.delete-button:pressed {
-    -fx-background-color: #b71c1c;
-}
-
-/* Excepción: los botones de Guardar mantienen estilo claro */
-.save-button {
-    -fx-background-color: #e0e0e0;  /* gris claro */
-    -fx-text-fill: #000000;         /* texto negro */
-    -fx-font-weight: bold;
-    -fx-border-color: #bdbdbd;
-    -fx-border-width: 1px;
-}
-.save-button:hover {
-    -fx-background-color: #f5f5f5;
-}
-.save-button:pressed {
-    -fx-background-color: #d5d5d5;
-}
-
 /* Pestañas de la bandeja */
 .inbox-tabs .tab-header-area {
     -fx-background-color: #2c2c2c;
@@ -141,8 +115,6 @@
     -fx-text-fill: #ffffff;
     -fx-font-weight: bold;
 }
-
-/* Asegura que la línea de separación también sea oscura */
 .inbox-tabs .tab-header-background {
     -fx-background-color: #2c2c2c;
 }
@@ -154,7 +126,6 @@
     -fx-border-width: 1px;
     -fx-border-radius: 5px;
 }
-/* Cabecera de tabla */
 .bandeja-tabla .column-header-background,
 .table-view .column-header-background {
     -fx-background-color: #2c2c2c;
@@ -169,8 +140,6 @@
     -fx-font-size: 13px;
     -fx-font-weight: bold;
 }
-
-/* Filas y celdas */
 .bandeja-tabla .table-row-cell:even {
     -fx-background-color: #202124;
 }
@@ -202,4 +171,95 @@
 }
 .chat-root > .vbox {
     -fx-background-color: #303134;
+}
+
+/* Campos de texto (TextField y PasswordField) en oscuro */
+.text-field,
+.password-field {
+    -fx-control-inner-background: #303134;
+    -fx-background-color: #303134;
+    -fx-background-insets: 0;
+    -fx-prompt-text-fill: #bbbbbb;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #5f6368;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-padding: 0.333em;
+}
+
+/* Botón “Guardar” en formularios de ProfileWindow: solo texto */
+.save-button {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-padding: 4px 8px;
+}
+.save-button:hover,
+.save-button:pressed,
+.save-button:focused {
+    -fx-background-color: transparent;    /* nada de fondo al hover/press/focus */
+    -fx-focus-color: transparent;         /* anula el color de foco */
+    -fx-faint-focus-color: transparent;   /* anula el halo de foco */
+}
+/* Botón “Eliminar cuenta” — rojo sin borde */
+.delete-button {
+    -fx-background-color: #d32f2f;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-border-width: 0;
+    -fx-border-radius: 4px;
+    -fx-padding: 8px 15px;
+    -fx-cursor: hand;
+}
+.delete-button:hover {
+    -fx-background-color: #c62828;
+}
+.delete-button:pressed {
+    -fx-background-color: #b71c1c;
+}
+
+/* ─── Menús desplegables oscuros ──────────────────────────────────── */
+/* El fondo de los ContextMenu (pop-ups de MenuButton) */
+.context-menu {
+    -fx-background-color: #303134;
+    -fx-border-color: #5f6368;
+    -fx-border-width: 1px;
+}
+
+/* Cada ítem del menú */
+.context-menu .menu-item {
+    -fx-background-color: transparent;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+    -fx-padding: 6px 12px;
+}
+
+/* Hover sobre ítem */
+.context-menu .menu-item:hover {
+    -fx-background-color: #424242;
+}
+
+/* Asegura que las etiquetas dentro del menú sean blancas */
+.context-menu .label {
+    -fx-text-fill: #ffffff;
+}
+
+/* ─── MenuButton (el botón que abre el menú) ───────────────────────── */
+/* Fondo y texto del botón principal */
+.menu-button {
+    -fx-background-color: #424242;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-border-color: #616161;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+}
+.menu-button:hover {
+    -fx-background-color: #535353;
+}
+.menu-button:pressed {
+    -fx-background-color: #323232;
 }
