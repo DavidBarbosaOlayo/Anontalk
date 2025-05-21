@@ -63,8 +63,12 @@ public class MainInboxWindow extends Application {
             System.exit(0);
         });
 
-        // botón de perfil + bienvenida
-        ImageView profileIcon = new ImageView(new Image(getClass().getResourceAsStream("/user.png"), 24, 24, true, true));
+        // texto de bienvenida en negrita y azul oscuro
+        Label lblWelcome = new Label("Bienvenido, " + currentUser);
+        lblWelcome.setStyle("-fx-font-weight: bold;" + "-fx-text-fill: #102C54;");
+
+// icono de usuario
+        ImageView profileIcon = new ImageView(new Image(getClass().getResourceAsStream("/user.png"), 26, 26, true, true));
         Button btnPerfil = new Button();
         btnPerfil.setGraphic(profileIcon);
         btnPerfil.setStyle("-fx-background-color: transparent;");
@@ -76,11 +80,21 @@ public class MainInboxWindow extends Application {
             }
         });
 
-        Label lblWelcome = new Label("Bienvenido, " + currentUser);
-        lblWelcome.getStyleClass().add("label2");
+// icono de ajustes
+        ImageView settingsIcon = new ImageView(new Image(getClass().getResourceAsStream("/ajustes.png"), 26, 26, true, true));
+        Button btnSettings = new Button();
+        btnSettings.setGraphic(settingsIcon);
+        btnSettings.setStyle("-fx-background-color: transparent;");
+// btnSettings.setOnAction(e -> abrirVentanaDeAjustes());
 
-        HBox leftBox = new HBox(10, btnPerfil, lblWelcome);
+// grupo de iconos con separación mínima
+        HBox iconsBox = new HBox(2, btnPerfil, btnSettings);
+        iconsBox.setAlignment(Pos.CENTER_LEFT);
+
+// contenedor final: bienvenida + grupo de iconos
+        HBox leftBox = new HBox(12, lblWelcome, iconsBox);
         leftBox.setAlignment(Pos.CENTER_LEFT);
+
 
         // botones de acción
         Button btnNuevo = new Button("Nuevo Mensaje");
