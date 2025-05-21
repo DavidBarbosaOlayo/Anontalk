@@ -106,8 +106,9 @@
 
 /* Título “Perfil Usuario” */
 .profile-title {
-    -fx-font-size: 18px;
+    -fx-font-size: 20px;
     -fx-font-weight: bold;
+    -fx-text-fill: #202124;
 }
 
 /* Botón “Eliminar cuenta” */
@@ -122,7 +123,11 @@
     -fx-font-size: 14px;
     -fx-font-weight: bold;
 }
-
+.welcome-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #000000;
+}
 /* Label interno de cada sección */
 .section-label {
     -fx-font-size: 13px;
@@ -141,7 +146,44 @@
 .save-button:hover,
 .save-button:pressed,
 .save-button:focused {
-    -fx-background-color: transparent;    /* sin fondo al hover/press/focus */
-    -fx-focus-color: transparent;         /* anula el color del foco */
-    -fx-faint-focus-color: transparent;   /* anula el halo de foco */
+    -fx-background-color: transparent;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
 }
+
+/* ─── BOTONES MENÚ (MenuButton) EN TEMA CLARO ───────────────────────── */
+.menu-button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #202124;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-border-color: #dadce0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-cursor: hand;
+}
+.menu-button:hover {
+    -fx-background-color: #e0e0e0;
+}
+.menu-button:pressed {
+    -fx-background-color: #d5d5d5;
+}
+
+//* Botones iconográficos (sin texto) */
+ .icon-button {
+     -fx-background-color: transparent;
+     -fx-border-width: 0;
+     -fx-background-insets: 0;
+     -fx-focus-color: transparent;
+     -fx-faint-focus-color: transparent;
+     -fx-cursor: hand;
+ }
+
+ /* Hover y pressed para todos los icon-buttons */
+ .icon-button:hover {
+     -fx-background-color: #e0e0e0;
+ }
+ .icon-button:pressed {
+     -fx-background-color: #d5d5d5;
+ }
+

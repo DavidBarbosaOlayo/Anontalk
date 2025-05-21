@@ -95,8 +95,9 @@
 }
 
 /* Títulos de perfil y secciones */
-.profile-title,
-.section-label {
+.profile-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
     -fx-text-fill: #ffffff;
 }
 
@@ -160,6 +161,7 @@
 
 /* Welcome label */
 .welcome-label {
+    -fx-font-size: 18px;
     -fx-font-weight: bold;
     -fx-text-fill: #ffffff;
 }
@@ -199,10 +201,11 @@
 .save-button:hover,
 .save-button:pressed,
 .save-button:focused {
-    -fx-background-color: transparent;    /* nada de fondo al hover/press/focus */
-    -fx-focus-color: transparent;         /* anula el color de foco */
-    -fx-faint-focus-color: transparent;   /* anula el halo de foco */
+    -fx-background-color: transparent;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
 }
+
 /* Botón “Eliminar cuenta” — rojo sin borde */
 .delete-button {
     -fx-background-color: #d32f2f;
@@ -256,10 +259,21 @@
     -fx-border-color: #616161;
     -fx-border-width: 1px;
     -fx-border-radius: 4px;
+    -fx-cursor: hand;
 }
 .menu-button:hover {
     -fx-background-color: #535353;
 }
 .menu-button:pressed {
     -fx-background-color: #323232;
+}
+
+/* Botones iconográficos (sin texto) */
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-background-insets: 0;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+    -fx-cursor: hand;
 }

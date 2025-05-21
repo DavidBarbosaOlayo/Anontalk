@@ -5,12 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import managers.PopUpInfo;
@@ -61,6 +64,11 @@ public class LoginWindow extends Application {
             System.exit(0);
         });
 
+        // Título principal
+        Label lblTitle = new Label("ANONTALK");
+        lblTitle.getStyleClass().add("welcome-label");
+        GridPane.setHalignment(lblTitle, HPos.CENTER);
+
         // Campos
         TextField txtUser = new TextField();
         txtUser.setPromptText("Usuario");
@@ -69,6 +77,7 @@ public class LoginWindow extends Application {
         TextField txtEmail = new TextField();
         txtEmail.setPromptText("Email");
 
+        // Botones y enlace
         Button btnLogin = new Button("Iniciar Sesión");
         Button btnReg = new Button("Registrarse");
         Hyperlink lnkForgot = new Hyperlink("¿Has olvidado tu contraseña?");
@@ -78,25 +87,42 @@ public class LoginWindow extends Application {
         btnReg.setOnAction(e -> register(txtUser.getText().trim(), txtPwd.getText().trim(), txtEmail.getText().trim()));
         lnkForgot.setOnAction(e -> forgotPasswordDialog());
 
-        // Layout
+        // GridPane principal para campos
         GridPane grid = new GridPane();
-        grid.setAlignment(Pos.CENTER);
         grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20));
+        grid.setVgap(15);
+        grid.setPadding(new Insets(30));
+        grid.setMaxWidth(300);
 
-        grid.addRow(0, new Label("Usuario:"), txtUser);
-        grid.addRow(1, new Label("Contraseña:"), txtPwd);
-        grid.addRow(2, new Label("Email:"), txtEmail);
-        grid.addRow(3, btnLogin, btnReg);
-        grid.add(lnkForgot, 1, 4);
-        GridPane.setMargin(lnkForgot, new Insets(10, 0, 0, 0));
+        // Añadir nodos al grid
+        grid.add(lblTitle, 0, 0, 2, 1);
+        GridPane.setMargin(lblTitle, new Insets(0, 0, 20, 0));
 
-        Scene scene = new Scene(grid, 450, 350);
+        grid.add(new Label("Usuario:"), 0, 1);
+        grid.add(txtUser, 1, 1);
+        grid.add(new Label("Contraseña:"), 0, 2);
+        grid.add(txtPwd, 1, 2);
+        grid.add(new Label("Email:"), 0, 3);
+        grid.add(txtEmail, 1, 3);
+
+        HBox buttonBox = new HBox(10, btnLogin, btnReg);
+        buttonBox.setAlignment(Pos.CENTER);
+        grid.add(buttonBox, 0, 4, 2, 1);
+        GridPane.setMargin(buttonBox, new Insets(30, 0, 0, 0));
+
+        grid.add(lnkForgot, 0, 5, 2, 1);
+        GridPane.setHalignment(lnkForgot, HPos.CENTER);
+        GridPane.setMargin(lnkForgot, new Insets(15, 0, 0, 0));
+
+        // Contenedor raíz que centra el grid
+        StackPane root = new StackPane(grid);
+
+        Scene scene = new Scene(root, 450, 420);
         scene.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }
+
 
     private void forgotPasswordDialog() {
         TextInputDialog dlg = new TextInputDialog();

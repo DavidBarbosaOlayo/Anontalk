@@ -49,16 +49,23 @@ public class MainInboxWindow extends Application {
 
     private Timeline refresher;
     // Iconos claro/oscuro
-    private final Image userIconLight = new Image(getClass().getResourceAsStream("/user.png"), 26, 26, true, true);
-    private final Image userIconDark = new Image(getClass().getResourceAsStream("/user2.png"), 26, 26, true, true);
+    private final Image userIconLight = new Image(getClass().getResourceAsStream("/user.png"), 30, 30, true, true);
+    private final Image userIconDark = new Image(getClass().getResourceAsStream("/user2.png"), 30, 30, true, true);
     private final Image trashIconLight = new Image(getClass().getResourceAsStream("/papelera.png"), 16, 16, true, true);
     private final Image trashIconDark = new Image(getClass().getResourceAsStream("/papelera2.png"), 16, 16, true, true);
-    private final Image settingsIconLight = new Image(getClass().getResourceAsStream("/ajustes.png"), 26, 26, true, true);
-    private final Image settingsIconDark = new Image(getClass().getResourceAsStream("/ajustes2.png"), 26, 26, true, true);
+    private final Image settingsIconLight = new Image(getClass().getResourceAsStream("/ajustes.png"), 30, 30, true, true);
+    private final Image settingsIconDark = new Image(getClass().getResourceAsStream("/ajustes2.png"), 30, 30, true, true);
+    private final Image newMsgIconLight = new Image(getClass().getResourceAsStream("/newM.png"), 30, 30, true, true);
+    private final Image newMsgIconDark = new Image(getClass().getResourceAsStream("/newM2.png"), 30, 30, true, true);
+    private final Image logoutIconLight = new Image(getClass().getResourceAsStream("/logOut.png"), 30, 28, true, true);
+    private final Image logoutIconDark = new Image(getClass().getResourceAsStream("/logOut2.png"), 30, 28, true, true);
 
     // Views y estado de tema
     private ImageView profileIconView;
     private ImageView settingsIconView;
+    private ImageView newMsgIconView;
+    private ImageView logoutIconView;
+
     private final List<Button> trashButtons = new ArrayList<>();
     private boolean darkTheme = false;
 
@@ -82,11 +89,13 @@ public class MainInboxWindow extends Application {
         Label lblWelcome = new Label("Bienvenido, " + currentUser);
         lblWelcome.getStyleClass().add("welcome-label");
 
-        // Icono de perfil
+        // --- Botones de icono ---
+
+        // Perfil
         profileIconView = new ImageView(userIconLight);
         Button btnPerfil = new Button();
         btnPerfil.setGraphic(profileIconView);
-        btnPerfil.setStyle("-fx-background-color: transparent;");
+        btnPerfil.getStyleClass().add("icon-button");
         btnPerfil.setOnAction(e -> {
             try {
                 new ProfileWindow(currentUser, this.stage).show();
@@ -95,93 +104,102 @@ public class MainInboxWindow extends Application {
             }
         });
 
-        // Menú Idioma
-        Menu idiomaMenu = new Menu("Idioma");
-        MenuItem miCastellano = new MenuItem("Castellano");
-        MenuItem miCatalan   = new MenuItem("Catalán");
-        MenuItem miIngles    = new MenuItem("Inglés");
-        idiomaMenu.getItems().addAll(miCastellano, miCatalan, miIngles);
-
-        // Menú Tema
-        Menu temaMenu = new Menu("Tema");
-        MenuItem miOscuro = new MenuItem("Oscuro");
-        MenuItem miClaro  = new MenuItem("Claro");
-        temaMenu.getItems().addAll(miOscuro, miClaro);
-
-        // Botón Ajustes
+        // Ajustes (menú idioma/tema)
         settingsIconView = new ImageView(settingsIconLight);
+        Menu idiomaMenu = new Menu("Idioma", null, new MenuItem("Castellano"), new MenuItem("Catalán"), new MenuItem("Inglés"));
+        Menu temaMenu = new Menu("Tema", null, new MenuItem("Oscuro"), new MenuItem("Claro"));
         MenuButton btnSettings = new MenuButton();
         btnSettings.setGraphic(settingsIconView);
-        btnSettings.setStyle("-fx-background-color: transparent;");
+        btnSettings.getStyleClass().add("icon-button");
         btnSettings.getItems().addAll(idiomaMenu, temaMenu);
 
-        // Handlers de idioma (TODO: recargar recursos)
-        miCastellano.setOnAction(e -> Locale.setDefault(new Locale("es", "ES")));
-        miCatalan.setOnAction(e -> Locale.setDefault(new Locale("ca", "ES")));
-        miIngles.setOnAction(e -> Locale.setDefault(new Locale("en", "US")));
+        // Handlers idioma
+        idiomaMenu.getItems().get(0).setOnAction(e -> Locale.setDefault(new Locale("es", "ES")));
+        idiomaMenu.getItems().get(1).setOnAction(e -> Locale.setDefault(new Locale("ca", "ES")));
+        idiomaMenu.getItems().get(2).setOnAction(e -> Locale.setDefault(new Locale("en", "US")));
 
-        // Agrupación de iconos
-        HBox iconsBox = new HBox(2, btnPerfil, btnSettings);
-        iconsBox.setAlignment(Pos.CENTER_LEFT);
-
-        // Barra superior
-        HBox leftBox  = new HBox(12, lblWelcome, iconsBox);
-        leftBox.setAlignment(Pos.CENTER_LEFT);
-        Button btnNuevo = new Button("Nuevo Mensaje");
+        // Nuevo Mensaje
+        newMsgIconView = new ImageView(newMsgIconLight);
+        Button btnNuevo = new Button();
+        btnNuevo.setGraphic(newMsgIconView);
+        btnNuevo.getStyleClass().add("icon-button");
         btnNuevo.setOnAction(e -> showSendDialog());
-        Button btnCerrar = new Button("Cerrar Sesión");
+
+        // Cerrar Sesión
+        logoutIconView = new ImageView(logoutIconLight);
+        Button btnCerrar = new Button();
+        btnCerrar.setGraphic(logoutIconView);
+        btnCerrar.getStyleClass().add("icon-button");
         btnCerrar.setOnAction(e -> {
             if (refresher != null) refresher.stop();
             stage.close();
             pop.mostrarAlertaInformativa("Cerrar Sesión", "Has cerrado sesión correctamente.");
-            try { new LoginWindow().start(new Stage()); } catch (Exception ignored) {}
+            try {
+                new LoginWindow().start(new Stage());
+            } catch (Exception ignored) {
+            }
         });
-        HBox rightBox = new HBox(10, btnNuevo, btnCerrar);
-        rightBox.setAlignment(Pos.CENTER_RIGHT);
 
-        BorderPane topBar = new BorderPane(leftBox, null, rightBox, null, null);
+        // --- Top bar ---
+
+        // Izquierda: solo saludo
+        HBox leftBox = new HBox(lblWelcome);
+        leftBox.setAlignment(Pos.CENTER_LEFT);
+
+        // Derecha: orden de izquierda a derecha:
+        // Nuevo Mensaje, Perfil, Ajustes, Cerrar Sesión
+        HBox rightIcons = new HBox(2, btnNuevo, btnPerfil, btnSettings, btnCerrar);
+        rightIcons.setAlignment(Pos.CENTER_RIGHT);
+
+        BorderPane topBar = new BorderPane();
+        topBar.setLeft(leftBox);
+        topBar.setRight(rightIcons);
         topBar.setPadding(new Insets(10));
         topBar.getStyleClass().add("top-bar");
 
-        // Pestañas bandeja/enviados
-        TabPane tabs = new TabPane(
-                new Tab("Bandeja de Entrada", createTable(true)),
-                new Tab("Mensajes Enviados", createTable(false))
-        );
+        // --- Contenido principal ---
+
+        TabPane tabs = new TabPane(new Tab("Bandeja de Entrada", createTable(true)), new Tab("Mensajes Enviados", createTable(false)));
         tabs.getTabs().forEach(t -> t.setClosable(false));
         tabs.getStyleClass().add("inbox-tabs");
 
-        // Layout principal
         BorderPane root = new BorderPane();
         root.setTop(topBar);
         root.setCenter(tabs);
         root.setPadding(new Insets(10));
         root.getStyleClass().add("main-root");
 
-        // Escena y gestión de tema
+        // --- Escena y tema ---
+
         Scene scene = new Scene(root, 800, 600);
-        // Inicializa con el CSS actual y añade listener para cambios
         ThemeManager tm = ThemeManager.getInstance();
         scene.getStylesheets().setAll(tm.getCss());
         tm.themeProperty().addListener((obs, oldT, newT) -> {
             scene.getStylesheets().setAll(tm.getCss());
         });
 
-        // Handlers de tema
-        miOscuro.setOnAction(e -> {
+        // Handlers de tema para cambiar iconos
+        MenuItem oscuro = temaMenu.getItems().get(0);
+        MenuItem claro = temaMenu.getItems().get(1);
+        oscuro.setOnAction(e -> {
             tm.setTheme("dark");
             profileIconView.setImage(userIconDark);
             settingsIconView.setImage(settingsIconDark);
             trashButtons.forEach(btn -> btn.setGraphic(new ImageView(trashIconDark)));
+            newMsgIconView.setImage(newMsgIconDark);
+            logoutIconView.setImage(logoutIconDark);
         });
-        miClaro.setOnAction(e -> {
+        claro.setOnAction(e -> {
             tm.setTheme("light");
             profileIconView.setImage(userIconLight);
             settingsIconView.setImage(settingsIconLight);
             trashButtons.forEach(btn -> btn.setGraphic(new ImageView(trashIconLight)));
+            newMsgIconView.setImage(newMsgIconLight);
+            logoutIconView.setImage(logoutIconLight);
         });
 
-        // Mostrar y arrancar refresco
+        // --- Mostrar y refrescar ---
+
         stage.setScene(scene);
         stage.show();
         loadMessages();
@@ -189,6 +207,7 @@ public class MainInboxWindow extends Application {
         refresher.setCycleCount(Timeline.INDEFINITE);
         refresher.play();
     }
+
 
     private TableView<Mensaje> createTable(boolean inbox) {
         var list = inbox ? MessageStore.inboxMessages : MessageStore.sentMessages;
@@ -296,17 +315,25 @@ public class MainInboxWindow extends Application {
         Stage dialog = new Stage();
         dialog.setTitle("Redactar mensaje");
 
+        // Destinatario
         TextField txtPara = new TextField();
         txtPara.setPromptText("Para");
+        // en oscuro: ya usa la clase "text-field" por defecto, y tu tema2.css la estiliza
 
+        // Asunto
         TextField txtAsunto = new TextField();
         txtAsunto.setPromptText("Asunto");
+        // idem: TextField hereda .text-field
 
+        // Cuerpo del mensaje
         TextArea txtCuerpo = new TextArea();
         txtCuerpo.setPromptText("Escribe tu mensaje...");
         txtCuerpo.setWrapText(true);
         txtCuerpo.setPrefHeight(200);
+        // aplicamos la clase para que tenga fondo oscuro como el chat
+        txtCuerpo.getStyleClass().add("chat-textarea");
 
+        // Botones
         Button btnEnviar = new Button("Enviar");
         Button btnCancelar = new Button("Cancelar");
         btnCancelar.setOnAction(e -> dialog.close());
@@ -368,7 +395,13 @@ public class MainInboxWindow extends Application {
         layout.setPrefWidth(500);
 
         Scene scene = new Scene(layout);
-        scene.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
+        // Aplica dinámicamente el tema (claro u oscuro)
+        ThemeManager tm = ThemeManager.getInstance();
+        scene.getStylesheets().setAll(tm.getCss());
+        tm.themeProperty().addListener((obs, oldT, newT) -> {
+            scene.getStylesheets().setAll(tm.getCss());
+        });
+
         dialog.setScene(scene);
         dialog.show();
     }
