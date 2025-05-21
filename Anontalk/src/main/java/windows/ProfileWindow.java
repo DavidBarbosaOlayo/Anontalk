@@ -1,4 +1,3 @@
-// ProfileWindow.java
 package windows;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,96 +24,70 @@ import java.net.http.HttpResponse;
 public class ProfileWindow extends Stage {
 
     private final PopUpInfo pop = new PopUpInfo();
-    private static final double WIDTH       = 800;
-    private static final double HEIGHT      = 700;
-    private static final double BTN_WIDTH   = 250;
+    private static final double WIDTH = 800;
+    private static final double HEIGHT = 700;
+    private static final double BTN_WIDTH = 250;
     private static final double FIELD_WIDTH = 200;
 
     private final String currentUser;
-    private final Stage  inboxStage;
-    private final HttpClient http   = HttpClient.newHttpClient();
+    private final Stage inboxStage;
+    private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
 
     public ProfileWindow(String currentUser, Stage inboxStage) {
         this.currentUser = currentUser;
-        this.inboxStage  = inboxStage;
+        this.inboxStage = inboxStage;
 
         setTitle("Perfil de " + currentUser);
 
         Label lblTitle = new Label("Perfil Usuario");
-        lblTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        lblTitle.getStyleClass().add("profile-title");
         lblTitle.setAlignment(Pos.CENTER);
         lblTitle.setPadding(new Insets(30, 0, 0, 0));
 
         VBox rootSections = new VBox(
                 30,
                 buildSection("Cambiar contraseña", buildPwdContent()),
-                buildSection("Cambiar email",      buildEmailContent())
+                buildSection("Cambiar email", buildEmailContent())
         );
         rootSections.setAlignment(Pos.TOP_CENTER);
 
         Button btnDel = new Button("Eliminar cuenta");
         btnDel.setPrefWidth(BTN_WIDTH);
         btnDel.setAlignment(Pos.CENTER);
-        btnDel.setStyle(
-                "-fx-background-color: #d32f2f;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-weight: bold;"
-        );
+        btnDel.getStyleClass().add("delete-button");
         btnDel.setOnAction(e -> {
             TextInputDialog dlg = new TextInputDialog();
             dlg.setTitle("Eliminar cuenta");
-            dlg.setHeaderText(
-                    "Para confirmar, escribe:\n\"Estoy seguro de eliminar la cuenta\""
-            );
+            dlg.setHeaderText("Para confirmar, escribe:\n\"Estoy seguro de eliminar la cuenta\"");
             dlg.setContentText("Confirmación:");
             dlg.showAndWait().ifPresent(input -> {
                 if ("Estoy seguro de eliminar la cuenta".equals(input.trim())) {
                     HttpRequest req = HttpRequest.newBuilder()
-                            .uri(URI.create(
-                                    "http://localhost:8080/api/users/" + currentUser
-                            ))
+                            .uri(URI.create("http://localhost:8080/api/users/" + currentUser))
                             .DELETE()
                             .build();
                     http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
                             .thenAccept(resp -> Platform.runLater(() -> {
-                                if (resp.statusCode() == 200
-                                        || resp.statusCode() == 204) {
-                                    pop.mostrarAlertaInformativa(
-                                            "Cuenta eliminada",
-                                            "Tu cuenta ha sido eliminada correctamente."
-                                    );
-                                    // cerrar perfil e inbox
+                                if (resp.statusCode() == 200 || resp.statusCode() == 204) {
+                                    pop.mostrarAlertaInformativa("Cuenta eliminada", "Tu cuenta ha sido eliminada correctamente.");
                                     this.close();
                                     inboxStage.close();
-                                    // abrir login
-                                    try {
-                                        new LoginWindow().start(new Stage());
-                                    } catch (Exception ex) {
-                                        pop.mostrarAlertaError(
-                                                "Error",
-                                                "No se pudo abrir la ventana de login."
-                                        );
+                                    try { new LoginWindow().start(new Stage()); } catch (Exception ex) {
+                                        pop.mostrarAlertaError("Error", "No se pudo abrir la ventana de login.");
                                     }
                                 } else {
-                                    pop.mostrarAlertaError(
-                                            "Error",
-                                            "No se pudo eliminar la cuenta (código "
-                                                    + resp.statusCode() + ")."
-                                    );
+                                    pop.mostrarAlertaError("Error", "No se pudo eliminar la cuenta (código " + resp.statusCode() + ").");
                                 }
                             }));
                 } else {
-                    pop.mostrarAlertaError(
-                            "Confirmación incorrecta",
-                            "El texto no coincide. Operación cancelada."
-                    );
+                    pop.mostrarAlertaError("Confirmación incorrecta", "El texto no coincide. Operación cancelada.");
                 }
             });
         });
         VBox deleteBox = new VBox(btnDel);
         deleteBox.setAlignment(Pos.CENTER);
-        deleteBox.setPadding(new Insets(20,0,0,0));
+        deleteBox.setPadding(new Insets(20, 0, 0, 0));
 
         VBox content = new VBox(40, lblTitle, rootSections, deleteBox);
         content.setAlignment(Pos.TOP_CENTER);
@@ -126,17 +99,23 @@ public class ProfileWindow extends Stage {
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
         Scene scene = new Scene(scrollPane, WIDTH, HEIGHT);
-        scene.getStylesheets().add(
-                getClass().getResource("/temas.css").toExternalForm()
-        );
+
+        // Gestión de tema
+        ThemeManager tm = ThemeManager.getInstance();
+        scene.getStylesheets().setAll(tm.getCss());
+        tm.themeProperty().addListener((obs, oldT, newT) -> {
+            scene.getStylesheets().setAll(tm.getCss());
+        });
+
         setScene(scene);
     }
+
 
     private VBox buildSection(String headerText, Node content) {
         Button header = new Button(headerText);
         header.setPrefWidth(BTN_WIDTH);
         header.setAlignment(Pos.CENTER);
-        header.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        header.getStyleClass().add("section-header");
 
         content.setVisible(false);
         content.setScaleY(0);
@@ -145,26 +124,12 @@ public class ProfileWindow extends Stage {
 
         header.setOnAction(e -> {
             if (content.isVisible()) {
-                Timeline collapse = new Timeline(
-                        new KeyFrame(Duration.millis(300),
-                                new KeyValue(content.scaleYProperty(), 0),
-                                new KeyValue(content.opacityProperty(), 0)
-                        )
-                );
+                Timeline collapse = new Timeline(new KeyFrame(Duration.millis(300), new KeyValue(content.scaleYProperty(), 0), new KeyValue(content.opacityProperty(), 0)));
                 collapse.setOnFinished(ev -> content.setVisible(false));
                 collapse.play();
             } else {
                 content.setVisible(true);
-                Timeline expand = new Timeline(
-                        new KeyFrame(Duration.ZERO,
-                                new KeyValue(content.scaleYProperty(), 0),
-                                new KeyValue(content.opacityProperty(), 0)
-                        ),
-                        new KeyFrame(Duration.millis(300),
-                                new KeyValue(content.scaleYProperty(), 1),
-                                new KeyValue(content.opacityProperty(), 1)
-                        )
-                );
+                Timeline expand = new Timeline(new KeyFrame(Duration.ZERO, new KeyValue(content.scaleYProperty(), 0), new KeyValue(content.opacityProperty(), 0)), new KeyFrame(Duration.millis(300), new KeyValue(content.scaleYProperty(), 1), new KeyValue(content.opacityProperty(), 1)));
                 expand.play();
             }
         });
@@ -176,7 +141,7 @@ public class ProfileWindow extends Stage {
 
     private VBox buildPwdContent() {
         Label lbl = new Label("Cambiar contraseña");
-        lbl.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
+        lbl.getStyleClass().add("section-label");
 
         PasswordField txtOld = new PasswordField();
         txtOld.setPromptText("Contraseña actual");
@@ -196,15 +161,10 @@ public class ProfileWindow extends Stage {
         Button btnSave = new Button("Guardar");
         btnSave.setPrefWidth(BTN_WIDTH);
         btnSave.setAlignment(Pos.CENTER);
-        btnSave.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-border-width: 0;" +
-                        "-fx-text-fill: #102C54;" +
-                        "-fx-font-weight: bold;"
-        );
+        btnSave.getStyleClass().add("save-button");
         btnSave.setOnAction(e -> {
-            String oldPwd  = txtOld.getText().trim();
-            String newPwd  = txtNew.getText().trim();
+            String oldPwd = txtOld.getText().trim();
+            String newPwd = txtNew.getText().trim();
             String confPwd = txtConfirm.getText().trim();
             if (oldPwd.isEmpty() || newPwd.isEmpty() || confPwd.isEmpty()) {
                 pop.mostrarAlertaError("Error", "Completa todos los campos.");
@@ -215,29 +175,15 @@ public class ProfileWindow extends Stage {
                 return;
             }
             try {
-                ObjectNode body = mapper.createObjectNode()
-                        .put("username",    currentUser)
-                        .put("oldPassword", oldPwd)
-                        .put("newPassword", newPwd);
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/users/change-password"))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                        .build();
-                http.sendAsync(req, HttpResponse.BodyHandlers.discarding())
-                        .thenAccept(resp -> Platform.runLater(() -> {
-                            if (resp.statusCode() == 200) {
-                                pop.mostrarAlertaInformativa(
-                                        "Éxito", "Contraseña cambiada correctamente."
-                                );
-                            } else {
-                                pop.mostrarAlertaError(
-                                        "Error",
-                                        "No se pudo cambiar la contraseña ("
-                                                + resp.statusCode() + ")."
-                                );
-                            }
-                        }));
+                ObjectNode body = mapper.createObjectNode().put("username", currentUser).put("oldPassword", oldPwd).put("newPassword", newPwd);
+                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/change-password")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
+                http.sendAsync(req, HttpResponse.BodyHandlers.discarding()).thenAccept(resp -> Platform.runLater(() -> {
+                    if (resp.statusCode() == 200) {
+                        pop.mostrarAlertaInformativa("Éxito", "Contraseña cambiada correctamente.");
+                    } else {
+                        pop.mostrarAlertaError("Error", "No se pudo cambiar la contraseña (" + resp.statusCode() + ").");
+                    }
+                }));
             } catch (Exception ex) {
                 pop.mostrarAlertaError("Error", "Error al conectar con el servidor.");
             }
@@ -251,7 +197,7 @@ public class ProfileWindow extends Stage {
 
     private VBox buildEmailContent() {
         Label lbl = new Label("Cambiar email");
-        lbl.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
+        lbl.getStyleClass().add("section-label");
 
         TextField txtNew = new TextField();
         txtNew.setPromptText("Nuevo correo");
@@ -266,14 +212,9 @@ public class ProfileWindow extends Stage {
         Button btnSave = new Button("Guardar");
         btnSave.setPrefWidth(BTN_WIDTH);
         btnSave.setAlignment(Pos.CENTER);
-        btnSave.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-border-width: 0;" +
-                        "-fx-text-fill: #102C54;" +
-                        "-fx-font-weight: bold;"
-        );
+        btnSave.getStyleClass().add("save-button");
         btnSave.setOnAction(e -> {
-            String newEmail  = txtNew.getText().trim();
+            String newEmail = txtNew.getText().trim();
             String confEmail = txtConfirm.getText().trim();
             if (newEmail.isEmpty() || confEmail.isEmpty()) {
                 pop.mostrarAlertaError("Error", "Completa ambos campos.");
@@ -284,26 +225,15 @@ public class ProfileWindow extends Stage {
                 return;
             }
             try {
-                ObjectNode body = mapper.createObjectNode()
-                        .put("username", currentUser)
-                        .put("newEmail", newEmail);
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/users/change-email"))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                        .build();
-                http.sendAsync(req, HttpResponse.BodyHandlers.discarding())
-                        .thenAccept(resp -> Platform.runLater(() -> {
-                            if (resp.statusCode() == 200) {
-                                pop.mostrarAlertaInformativa("Éxito", "Email cambiado correctamente.");
-                            } else {
-                                pop.mostrarAlertaError(
-                                        "Error",
-                                        "No se pudo cambiar el email ("
-                                                + resp.statusCode() + ")."
-                                );
-                            }
-                        }));
+                ObjectNode body = mapper.createObjectNode().put("username", currentUser).put("newEmail", newEmail);
+                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/change-email")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
+                http.sendAsync(req, HttpResponse.BodyHandlers.discarding()).thenAccept(resp -> Platform.runLater(() -> {
+                    if (resp.statusCode() == 200) {
+                        pop.mostrarAlertaInformativa("Éxito", "Email cambiado correctamente.");
+                    } else {
+                        pop.mostrarAlertaError("Error", "No se pudo cambiar el email (" + resp.statusCode() + ").");
+                    }
+                }));
             } catch (Exception ex) {
                 pop.mostrarAlertaError("Error", "Error al conectar con el servidor.");
             }

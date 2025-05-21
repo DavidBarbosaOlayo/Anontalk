@@ -1,0 +1,162 @@
+/* Fuente y fondo general */
+.root, .chat-root {
+    -fx-font-family: "Roboto", "Segoe UI", sans-serif;
+    -fx-background-color: #202124;
+    -fx-text-fill: #000000;
+}
+
+/* Encabezado del chat */
+.chat-header {
+    -fx-background-color: #303134;
+    -fx-text-fill: #000000;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-padding: 15px;
+    -fx-border-color: #5f6368;
+    -fx-border-width: 0 0 1px 0;
+}
+
+/* Área del mensaje */
+.chat-message-body {
+    -fx-font-size: 14px;
+    -fx-padding: 10px;
+    -fx-text-fill: #000000;
+}
+
+/* ScrollPane para el mensaje (sin fondo para efecto "limpio") */
+.chat-scrollpane {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+
+/* Área de composición del mensaje */
+.chat-compose-area {
+    -fx-background-color: #303134;
+    -fx-padding: 10px;
+    -fx-border-color: #5f6368;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+}
+
+/* TextArea para redactar el mensaje */
+.chat-textarea {
+    -fx-font-size: 14px;
+    -fx-border-color: #5f6368;
+    -fx-border-radius: 5px;
+    -fx-background-color: #202124;
+    -fx-text-fill: #000000;
+    -fx-padding: 10px;
+}
+
+/* Barra de herramientas en el área de redacción */
+.chat-toolbar {
+    -fx-background-color: #303134;
+    -fx-padding: 5px;
+    -fx-border-color: #5f6368;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+}
+
+/* Botones: tonos claros sobre fondo oscuro */
+.button {
+    -fx-background-color: #e0e0e0;
+    -fx-text-fill: #000000;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 8px 15px;
+    -fx-cursor: hand;
+    -fx-border-radius: 4px;
+    -fx-border-color: #bdbdbd;
+    -fx-border-width: 1px;
+}
+
+.button:hover {
+    -fx-background-color: #f5f5f5;
+}
+
+.button:pressed {
+    -fx-background-color: #d5d5d5;
+}
+
+.inbox-tabs {
+    -fx-background-color: transparent;
+}
+
+.bandeja-tabla {
+    -fx-background-color: #303134;
+    -fx-border-color: #5f6368;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+}
+
+.bandeja-tabla .column-header-background {
+    -fx-background-color: #303134;
+}
+
+.bandeja-tabla .table-row-cell:even {
+    -fx-background-color: #202124;
+}
+.bandeja-tabla .table-row-cell:odd {
+    -fx-background-color: #2c2c2c;
+}
+
+/* Color del texto de las celdas → blanco */
+.bandeja-tabla .table-cell {
+    -fx-text-fill: #ffffff;          /* blanco */
+}
+
+/* Asegúrate de mantenerlo también cuando la fila está seleccionada/focused */
+.bandeja-tabla .table-row-cell:filled:selected .table-cell,
+.bandeja-tabla .table-row-cell:filled:selected:focused .table-cell {
+    -fx-text-fill: #ffffff;          /* blanco incluso al seleccionar */
+}
+
+.bandeja-tabla .placeholder {
+    -fx-text-fill: #666666;
+    -fx-font-style: italic;
+}
+
+/* ─── CABECERAS DE PESTAÑAS ────────────────────────────────────────────────── */
+.inbox-tabs .tab-header-area {
+    -fx-background-color: #2c2c2c;      /* gris oscuro */
+}
+.inbox-tabs .tab {
+    -fx-background-insets: 0;
+}
+.inbox-tabs .tab:selected {
+    -fx-background-color: #3a3a3a;      /* un toque más claro para la pestaña activa */
+}
+.inbox-tabs .tab-label {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+.inbox-tabs .tab:selected .tab-label {
+    -fx-text-fill: #ffffff;
+}
+
+/* ─── CABECERA DE COLUMNAS DE LA TABLA ──────────────────────────────────── */
+.bandeja-tabla .column-header-background {
+    -fx-background-color: #2c2c2c;
+    -fx-border-color: transparent;
+}
+.bandeja-tabla .column-header,
+.bandeja-tabla .column-header .label {
+    -fx-text-fill: #000000;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+/* welcome label*/
+.welcome-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #ffffff;   /* blanco */
+}
+
+
+/* ─── FILAS Y CELDAS ─────────────────────────────────────────────────────── */
+.bandeja-tabla .table-row-cell:even {
+    -fx-background-color: #202124;
+}
+.bandeja-tabla .table-row-cell:odd {
+    -fx-background-color: #2c2c2c;
+}

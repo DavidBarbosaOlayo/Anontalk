@@ -1,4 +1,3 @@
-// MainInboxWindow.java
 package windows;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -34,7 +33,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class MainInboxWindow extends Application {
 
@@ -47,12 +48,26 @@ public class MainInboxWindow extends Application {
     private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule()).disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private Timeline refresher;
-    private final Image trashIcon = new Image(getClass().getResourceAsStream("/papelera.png"), 16, 16, true, true);
+    // Iconos claro/oscuro
+    private final Image userIconLight = new Image(getClass().getResourceAsStream("/user.png"), 26, 26, true, true);
+    private final Image userIconDark = new Image(getClass().getResourceAsStream("/user2.png"), 26, 26, true, true);
+    private final Image trashIconLight = new Image(getClass().getResourceAsStream("/papelera.png"), 16, 16, true, true);
+    private final Image trashIconDark = new Image(getClass().getResourceAsStream("/papelera2.png"), 16, 16, true, true);
+    private final Image settingsIconLight = new Image(getClass().getResourceAsStream("/ajustes.png"), 26, 26, true, true);
+    private final Image settingsIconDark = new Image(getClass().getResourceAsStream("/ajustes2.png"), 26, 26, true, true);
+
+    // Views y estado de tema
+    private ImageView profileIconView;
+    private ImageView settingsIconView;
+    private final List<Button> trashButtons = new ArrayList<>();
+    private boolean darkTheme = false;
+
 
     public MainInboxWindow(String currentUser) {
         this.currentUser = currentUser;
     }
 
+    // MainInboxWindow.java
     @Override
     public void start(Stage stage) {
         this.stage = stage;
@@ -63,14 +78,14 @@ public class MainInboxWindow extends Application {
             System.exit(0);
         });
 
-        // texto de bienvenida en negrita y azul oscuro
+        // Texto de bienvenida
         Label lblWelcome = new Label("Bienvenido, " + currentUser);
-        lblWelcome.setStyle("-fx-font-weight: bold;" + "-fx-text-fill: #102C54;");
+        lblWelcome.getStyleClass().add("welcome-label");
 
-// icono de usuario
-        ImageView profileIcon = new ImageView(new Image(getClass().getResourceAsStream("/user.png"), 26, 26, true, true));
+        // Icono de perfil
+        profileIconView = new ImageView(userIconLight);
         Button btnPerfil = new Button();
-        btnPerfil.setGraphic(profileIcon);
+        btnPerfil.setGraphic(profileIconView);
         btnPerfil.setStyle("-fx-background-color: transparent;");
         btnPerfil.setOnAction(e -> {
             try {
@@ -80,59 +95,95 @@ public class MainInboxWindow extends Application {
             }
         });
 
-// icono de ajustes
-        ImageView settingsIcon = new ImageView(new Image(getClass().getResourceAsStream("/ajustes.png"), 26, 26, true, true));
-        Button btnSettings = new Button();
-        btnSettings.setGraphic(settingsIcon);
-        btnSettings.setStyle("-fx-background-color: transparent;");
-// btnSettings.setOnAction(e -> abrirVentanaDeAjustes());
+        // Menú Idioma
+        Menu idiomaMenu = new Menu("Idioma");
+        MenuItem miCastellano = new MenuItem("Castellano");
+        MenuItem miCatalan   = new MenuItem("Catalán");
+        MenuItem miIngles    = new MenuItem("Inglés");
+        idiomaMenu.getItems().addAll(miCastellano, miCatalan, miIngles);
 
-// grupo de iconos con separación mínima
+        // Menú Tema
+        Menu temaMenu = new Menu("Tema");
+        MenuItem miOscuro = new MenuItem("Oscuro");
+        MenuItem miClaro  = new MenuItem("Claro");
+        temaMenu.getItems().addAll(miOscuro, miClaro);
+
+        // Botón Ajustes
+        settingsIconView = new ImageView(settingsIconLight);
+        MenuButton btnSettings = new MenuButton();
+        btnSettings.setGraphic(settingsIconView);
+        btnSettings.setStyle("-fx-background-color: transparent;");
+        btnSettings.getItems().addAll(idiomaMenu, temaMenu);
+
+        // Handlers de idioma (TODO: recargar recursos)
+        miCastellano.setOnAction(e -> Locale.setDefault(new Locale("es", "ES")));
+        miCatalan.setOnAction(e -> Locale.setDefault(new Locale("ca", "ES")));
+        miIngles.setOnAction(e -> Locale.setDefault(new Locale("en", "US")));
+
+        // Agrupación de iconos
         HBox iconsBox = new HBox(2, btnPerfil, btnSettings);
         iconsBox.setAlignment(Pos.CENTER_LEFT);
 
-// contenedor final: bienvenida + grupo de iconos
-        HBox leftBox = new HBox(12, lblWelcome, iconsBox);
+        // Barra superior
+        HBox leftBox  = new HBox(12, lblWelcome, iconsBox);
         leftBox.setAlignment(Pos.CENTER_LEFT);
-
-
-        // botones de acción
         Button btnNuevo = new Button("Nuevo Mensaje");
         btnNuevo.setOnAction(e -> showSendDialog());
-
         Button btnCerrar = new Button("Cerrar Sesión");
         btnCerrar.setOnAction(e -> {
             if (refresher != null) refresher.stop();
             stage.close();
             pop.mostrarAlertaInformativa("Cerrar Sesión", "Has cerrado sesión correctamente.");
-            try {
-                new LoginWindow().start(new Stage());
-            } catch (Exception ignored) {
-            }
+            try { new LoginWindow().start(new Stage()); } catch (Exception ignored) {}
         });
-
         HBox rightBox = new HBox(10, btnNuevo, btnCerrar);
         rightBox.setAlignment(Pos.CENTER_RIGHT);
 
         BorderPane topBar = new BorderPane(leftBox, null, rightBox, null, null);
         topBar.setPadding(new Insets(10));
+        topBar.getStyleClass().add("top-bar");
 
-        // pestañas de mensajes
-        TabPane tabs = new TabPane(new Tab("Bandeja de Entrada", createTable(true)), new Tab("Mensajes Enviados", createTable(false)));
+        // Pestañas bandeja/enviados
+        TabPane tabs = new TabPane(
+                new Tab("Bandeja de Entrada", createTable(true)),
+                new Tab("Mensajes Enviados", createTable(false))
+        );
         tabs.getTabs().forEach(t -> t.setClosable(false));
+        tabs.getStyleClass().add("inbox-tabs");
 
-        // escena principal
+        // Layout principal
         BorderPane root = new BorderPane();
         root.setTop(topBar);
         root.setCenter(tabs);
         root.setPadding(new Insets(10));
+        root.getStyleClass().add("main-root");
 
+        // Escena y gestión de tema
         Scene scene = new Scene(root, 800, 600);
-        scene.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
+        // Inicializa con el CSS actual y añade listener para cambios
+        ThemeManager tm = ThemeManager.getInstance();
+        scene.getStylesheets().setAll(tm.getCss());
+        tm.themeProperty().addListener((obs, oldT, newT) -> {
+            scene.getStylesheets().setAll(tm.getCss());
+        });
+
+        // Handlers de tema
+        miOscuro.setOnAction(e -> {
+            tm.setTheme("dark");
+            profileIconView.setImage(userIconDark);
+            settingsIconView.setImage(settingsIconDark);
+            trashButtons.forEach(btn -> btn.setGraphic(new ImageView(trashIconDark)));
+        });
+        miClaro.setOnAction(e -> {
+            tm.setTheme("light");
+            profileIconView.setImage(userIconLight);
+            settingsIconView.setImage(settingsIconLight);
+            trashButtons.forEach(btn -> btn.setGraphic(new ImageView(trashIconLight)));
+        });
+
+        // Mostrar y arrancar refresco
         stage.setScene(scene);
         stage.show();
-
-        // carga inicial + polling
         loadMessages();
         refresher = new Timeline(new KeyFrame(Duration.seconds(5), ev -> refreshInbox()));
         refresher.setCycleCount(Timeline.INDEFINITE);
@@ -142,27 +193,33 @@ public class MainInboxWindow extends Application {
     private TableView<Mensaje> createTable(boolean inbox) {
         var list = inbox ? MessageStore.inboxMessages : MessageStore.sentMessages;
         TableView<Mensaje> table = new TableView<>(list);
+        table.getStyleClass().add("bandeja-tabla");
 
+        // Columna Remitente/Destinatario
         TableColumn<Mensaje, String> colParty = new TableColumn<>(inbox ? "Remitente" : "Destinatario");
         colParty.setCellValueFactory(new PropertyValueFactory<>("sender"));
         colParty.setPrefWidth(150);
 
+        // Columna Asunto
         TableColumn<Mensaje, String> colAsunto = new TableColumn<>("Asunto");
         colAsunto.setCellValueFactory(new PropertyValueFactory<>("asunto"));
         colAsunto.setPrefWidth(580);
 
+        // Columna Eliminar
         TableColumn<Mensaje, Void> colDel = new TableColumn<>("");
         colDel.setPrefWidth(40);
         colDel.setCellFactory(tc -> new TableCell<>() {
             private final Button btn = new Button();
 
             {
-                btn.setGraphic(new ImageView(trashIcon));
+                Image icon = darkTheme ? trashIconDark : trashIconLight;
+                btn.setGraphic(new ImageView(icon));
                 btn.setStyle("-fx-background-color: transparent;");
                 btn.setOnAction(e -> {
                     Mensaje m = getTableRow().getItem();
                     if (m != null) deleteMessage(m);
                 });
+                trashButtons.add(btn);
             }
 
             @Override
@@ -187,6 +244,7 @@ public class MainInboxWindow extends Application {
         return table;
     }
 
+
     private void loadMessages() {
         refreshInbox();
         refreshSent();
@@ -195,7 +253,6 @@ public class MainInboxWindow extends Application {
     private void refreshInbox() {
         try {
             HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/inbox/" + currentUser)).GET().build();
-
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
             List<MensajeDTO> inbox = mapper.readValue(res.body(), new TypeReference<>() {
             });
@@ -207,7 +264,6 @@ public class MainInboxWindow extends Application {
     private void refreshSent() {
         try {
             HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/sent/" + currentUser)).GET().build();
-
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
             List<MensajeDTO> sent = mapper.readValue(res.body(), new TypeReference<>() {
             });
