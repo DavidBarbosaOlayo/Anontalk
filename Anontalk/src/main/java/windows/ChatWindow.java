@@ -45,52 +45,58 @@ public class ChatWindow {
         Stage chatStage = new Stage();
         chatStage.setTitle("Chat con " + mensaje.getSender());
 
-        /* ---------- cabecera ---------- */
-        Label lblHeader = new Label("De: " + mensaje.getSender() + "  |  Asunto: " + mensaje.getAsunto() + "  |  Fecha: " + LocalDateTime.now());
-
+        /* ---------- CABECERA ---------- */
+        Label lblHeader = new Label(
+                "De: " + mensaje.getSender() +
+                        "  |  Asunto: " + mensaje.getAsunto() +
+                        "  |  Fecha: " + LocalDateTime.now()
+        );
         lblHeader.getStyleClass().add("chat-header");
 
-        /* ---------- cuerpo recibido ---------- */
+        /* ---------- CUERPO RECIBIDO ---------- */
         Label lblBody = new Label(mensaje.getContent());
         lblBody.setWrapText(true);
         lblBody.getStyleClass().add("chat-message-body");
         ScrollPane scroll = new ScrollPane(lblBody);
         scroll.setFitToWidth(true);
 
-        /* ---------- redactar respuesta ---------- */
+        /* ---------- REDACTAR RESPUESTA ---------- */
         TextArea txtReply = new TextArea();
         txtReply.setPromptText("Redacta tu respuesta…");
         txtReply.setPrefRowCount(4);
         txtReply.getStyleClass().add("chat-textarea");
-
         Button btnBold = new Button("B");
         btnBold.setOnAction(e -> txtReply.appendText(" **texto en negrita** "));
         HBox toolbar = new HBox(10, btnBold);
         toolbar.setAlignment(Pos.CENTER_LEFT);
-
         VBox compose = new VBox(5, toolbar, txtReply);
         compose.setPadding(new Insets(10));
 
-        /* ---------- botones ---------- */
+        /* ---------- BOTONES ---------- */
         Button btnEnviar = new Button("Enviar");
         Button btnCerrar = new Button("Cerrar");
-        btnCerrar.setOnAction(e -> chatStage.close());
-
         btnEnviar.setOnAction(e -> sendReply(txtReply.getText().trim(), chatStage));
-
+        btnCerrar.setOnAction(e -> chatStage.close());
         HBox bar = new HBox(10, btnEnviar, btnCerrar);
         bar.setAlignment(Pos.CENTER_RIGHT);
         bar.setPadding(new Insets(10));
 
-        /* ---------- layout raíz ---------- */
+        /* ---------- LAYOUT RAÍZ ---------- */
         BorderPane root = new BorderPane();
+        root.getStyleClass().add("chat-root");          // ← añadimos esta clase
         root.setTop(lblHeader);
         root.setCenter(scroll);
         root.setBottom(new VBox(compose, bar));
         root.setPadding(new Insets(10));
 
+        /* ---------- ESCENA Y GESTIÓN DE TEMA ---------- */
         Scene scene = new Scene(root, 800, 600);
-        scene.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
+        ThemeManager tm = ThemeManager.getInstance();
+        scene.getStylesheets().setAll(tm.getCss());
+        tm.themeProperty().addListener((obs, oldT, newT) -> {
+            scene.getStylesheets().setAll(tm.getCss());
+        });
+
         chatStage.setScene(scene);
         chatStage.show();
     }
