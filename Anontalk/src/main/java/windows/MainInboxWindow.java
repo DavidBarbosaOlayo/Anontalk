@@ -24,6 +24,7 @@ import managers.PopUpInfo;
 import managers.mensajes.Mensaje;
 import managers.mensajes.MensajeDTO;
 import managers.mensajes.MessageStore;
+import org.springframework.context.ConfigurableApplicationContext;
 import security.encryption.HybridCrypto;
 import security.encryption.KeyManager;
 import security.encryption.RSAUtils;
@@ -68,12 +69,12 @@ public class MainInboxWindow extends Application {
 
     private final List<Button> trashButtons = new ArrayList<>();
     private boolean darkTheme = false;
+    private final ConfigurableApplicationContext springCtx;
 
-
-    public MainInboxWindow(String currentUser) {
+    public MainInboxWindow(String currentUser, ConfigurableApplicationContext springCtx) {
         this.currentUser = currentUser;
+        this.springCtx = springCtx;
     }
-
     // MainInboxWindow.java
     @Override
     public void start(Stage stage) {
@@ -98,7 +99,7 @@ public class MainInboxWindow extends Application {
         btnPerfil.getStyleClass().add("icon-button");
         btnPerfil.setOnAction(e -> {
             try {
-                new ProfileWindow(currentUser, this.stage).show();
+                new ProfileWindow(currentUser, this.stage,springCtx).show();
             } catch (Exception ex) {
                 pop.mostrarAlertaError("Error", "No se pudo abrir la ventana de perfil.");
             }
@@ -135,9 +136,13 @@ public class MainInboxWindow extends Application {
             stage.close();
             pop.mostrarAlertaInformativa("Cerrar Sesión", "Has cerrado sesión correctamente.");
             try {
-                new LoginWindow().start(new Stage());
-            } catch (Exception ignored) {
+                // ← Volvemos al login directamente con el mismo contexto
+                new LoginWindow(springCtx).start(new Stage());
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Platform.exit();
             }
+
         });
 
         // --- Top bar ---

@@ -37,21 +37,33 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
-@SpringBootApplication(scanBasePackages = {"windows", "managers.mensajes", "managers.users", "security.passwords"})
-@EnableJpaRepositories(basePackages = {"managers.mensajes", "managers.users", "security.passwords"})
-@EntityScan(basePackages = {"managers.mensajes", "managers.users", "security.passwords"})
+@SpringBootApplication(scanBasePackages = {
+        "windows",
+        "managers.mensajes",
+        "managers.users",
+        "security.passwords"
+})
+@EnableJpaRepositories(basePackages = {
+        "managers.mensajes",
+        "managers.users",
+        "security.passwords"
+})
+@EntityScan(basePackages = {
+        "managers.mensajes",
+        "managers.users",
+        "security.passwords"
+})
 public class LoginWindow extends Application {
 
-    private static ConfigurableApplicationContext springCtx;
+    private final ConfigurableApplicationContext springCtx;
     private final PopUpInfo pop = new PopUpInfo();
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
-
     private Stage primaryStage;
 
-    public static void main(String[] args) {
-        springCtx = SpringApplication.run(LoginWindow.class, args);
-        launch(args);
+    /** Recibe el contexto de Spring arrancado en el splash */
+    public LoginWindow(ConfigurableApplicationContext ctx) {
+        this.springCtx = ctx;
     }
 
     @Override
@@ -64,12 +76,11 @@ public class LoginWindow extends Application {
             System.exit(0);
         });
 
-        // Título principal
+        // --- Construcción de la UI (igual que antes) ---
         Label lblTitle = new Label("ANONTALK");
         lblTitle.getStyleClass().add("welcome-label");
         GridPane.setHalignment(lblTitle, HPos.CENTER);
 
-        // Campos
         TextField txtUser = new TextField();
         txtUser.setPromptText("Usuario");
         PasswordField txtPwd = new PasswordField();
@@ -77,27 +88,21 @@ public class LoginWindow extends Application {
         TextField txtEmail = new TextField();
         txtEmail.setPromptText("Email");
 
-        // Botones y enlace
         Button btnLogin = new Button("Iniciar Sesión");
-        Button btnReg = new Button("Registrarse");
+        Button btnReg   = new Button("Registrarse");
         Hyperlink lnkForgot = new Hyperlink("¿Has olvidado tu contraseña?");
 
-        // Acciones
         btnLogin.setOnAction(e -> login(txtUser.getText().trim(), txtPwd.getText().trim()));
         btnReg.setOnAction(e -> register(txtUser.getText().trim(), txtPwd.getText().trim(), txtEmail.getText().trim()));
         lnkForgot.setOnAction(e -> forgotPasswordDialog());
 
-        // GridPane principal para campos
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(15);
         grid.setPadding(new Insets(30));
         grid.setMaxWidth(300);
-
-        // Añadir nodos al grid
         grid.add(lblTitle, 0, 0, 2, 1);
         GridPane.setMargin(lblTitle, new Insets(0, 0, 20, 0));
-
         grid.add(new Label("Usuario:"), 0, 1);
         grid.add(txtUser, 1, 1);
         grid.add(new Label("Contraseña:"), 0, 2);
@@ -114,15 +119,12 @@ public class LoginWindow extends Application {
         GridPane.setHalignment(lnkForgot, HPos.CENTER);
         GridPane.setMargin(lnkForgot, new Insets(15, 0, 0, 0));
 
-        // Contenedor raíz que centra el grid
         StackPane root = new StackPane(grid);
-
         Scene scene = new Scene(root, 450, 420);
         scene.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }
-
 
     private void forgotPasswordDialog() {
         TextInputDialog dlg = new TextInputDialog();
@@ -194,8 +196,6 @@ public class LoginWindow extends Application {
         }
     }
 
-    // LoginWindow.java
-
     private void handleLoginSuccess(String respBody, String user, String pwd) {
         try {
             JsonNode root = mapper.readTree(respBody);
@@ -204,7 +204,6 @@ public class LoginWindow extends Application {
             String privEnc = root.get("privateKeyEncryptedBase64").asText();
             boolean requireChange = root.get("requirePasswordChange").asBoolean();
 
-            // Derivamos y cargamos claves como antes
             SecretKey aesKey = deriveAesKeyFromPassword(pwd, salt);
             String privB64 = AESUtils.decrypt(privEnc, aesKey);
             PrivateKey privKey = RSAUtils.privateKeyFromBase64(privB64);
@@ -213,15 +212,14 @@ public class LoginWindow extends Application {
             KeyManager.setPublicKey(pubKey);
 
             if (requireChange) {
-                // mostar diálogo para cambiar contraseña
                 Platform.runLater(() -> showForceChangeDialog(user, pwd));
             } else {
-                // flujo normal
                 Platform.runLater(() -> {
                     pop.mostrarAlertaInformativa("Éxito", "Bienvenido, " + user);
                     primaryStage.close();
                     try {
-                        new MainInboxWindow(user).start(new Stage());
+                        // ← Aquí pasamos springCtx al constructor de MainInboxWindow
+                        new MainInboxWindow(user, springCtx).start(new Stage());
                     } catch (Exception ignore) {
                     }
                 });
@@ -230,6 +228,7 @@ public class LoginWindow extends Application {
             Platform.runLater(() -> pop.mostrarAlertaError("Error", "No se pudo procesar la respuesta del servidor."));
         }
     }
+
 
     /**
      * Diálogo modal que pide nueva contraseña y la envía al endpoint change-password
@@ -280,7 +279,7 @@ public class LoginWindow extends Application {
                     // abrir bandeja
                     primaryStage.close();
                     try {
-                        new MainInboxWindow(username).start(new Stage());
+                        new MainInboxWindow(username, springCtx).start(new Stage());
                     } catch (Exception ignore) {
                     }
                 } else {

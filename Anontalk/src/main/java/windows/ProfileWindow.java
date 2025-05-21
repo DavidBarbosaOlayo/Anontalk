@@ -15,6 +15,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import managers.PopUpInfo;
+import org.springframework.context.ConfigurableApplicationContext;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -33,10 +34,12 @@ public class ProfileWindow extends Stage {
     private final Stage inboxStage;
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
+    private final ConfigurableApplicationContext springCtx;
 
-    public ProfileWindow(String currentUser, Stage inboxStage) {
+    public ProfileWindow(String currentUser, Stage inboxStage, ConfigurableApplicationContext springCtx) {
         this.currentUser = currentUser;
         this.inboxStage = inboxStage;
+        this.springCtx   = springCtx;
 
         setTitle("Perfil de " + currentUser);
 
@@ -56,6 +59,8 @@ public class ProfileWindow extends Stage {
         btnDel.setPrefWidth(BTN_WIDTH);
         btnDel.setAlignment(Pos.CENTER);
         btnDel.getStyleClass().add("delete-button");
+        // En ProfileWindow.java, dentro del constructor, reemplaza el bloque de elim. cuenta por:
+
         btnDel.setOnAction(e -> {
             TextInputDialog dlg = new TextInputDialog();
             dlg.setTitle("Eliminar cuenta");
@@ -73,7 +78,10 @@ public class ProfileWindow extends Stage {
                                     pop.mostrarAlertaInformativa("Cuenta eliminada", "Tu cuenta ha sido eliminada correctamente.");
                                     this.close();
                                     inboxStage.close();
-                                    try { new LoginWindow().start(new Stage()); } catch (Exception ex) {
+                                    try {
+                                        // ← Volvemos al login directamente con el mismo contexto
+                                        new LoginWindow(springCtx).start(new Stage());
+                                    } catch (Exception ex) {
                                         pop.mostrarAlertaError("Error", "No se pudo abrir la ventana de login.");
                                     }
                                 } else {
@@ -85,6 +93,7 @@ public class ProfileWindow extends Stage {
                 }
             });
         });
+
         VBox deleteBox = new VBox(btnDel);
         deleteBox.setAlignment(Pos.CENTER);
         deleteBox.setPadding(new Insets(20, 0, 0, 0));
@@ -109,7 +118,6 @@ public class ProfileWindow extends Stage {
 
         setScene(scene);
     }
-
 
     private VBox buildSection(String headerText, Node content) {
         Button header = new Button(headerText);
