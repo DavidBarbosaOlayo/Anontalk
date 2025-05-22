@@ -19,6 +19,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import managers.PopUpInfo;
 import managers.mensajes.Mensaje;
@@ -71,14 +72,20 @@ public class MainInboxWindow extends Application {
     private boolean darkTheme = false;
     private final ConfigurableApplicationContext springCtx;
 
+    private double xOffset = 0;
+    private double yOffset = 0;
+
     public MainInboxWindow(String currentUser, ConfigurableApplicationContext springCtx) {
         this.currentUser = currentUser;
         this.springCtx = springCtx;
     }
-    // MainInboxWindow.java
+
     @Override
     public void start(Stage stage) {
         this.stage = stage;
+
+        // Quitar la decoración nativa
+        stage.initStyle(StageStyle.UNDECORATED);
         stage.setTitle("Bandeja de Entrada - Anontalk");
         stage.setOnCloseRequest(e -> {
             if (refresher != null) refresher.stop();
@@ -99,7 +106,7 @@ public class MainInboxWindow extends Application {
         btnPerfil.getStyleClass().add("icon-button");
         btnPerfil.setOnAction(e -> {
             try {
-                new ProfileWindow(currentUser, this.stage,springCtx).show();
+                new ProfileWindow(currentUser, this.stage, springCtx).show();
             } catch (Exception ex) {
                 pop.mostrarAlertaError("Error", "No se pudo abrir la ventana de perfil.");
             }
@@ -136,23 +143,18 @@ public class MainInboxWindow extends Application {
             stage.close();
             pop.mostrarAlertaInformativa("Cerrar Sesión", "Has cerrado sesión correctamente.");
             try {
-                // ← Volvemos al login directamente con el mismo contexto
                 new LoginWindow(springCtx).start(new Stage());
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Platform.exit();
             }
-
         });
 
         // --- Top bar ---
 
-        // Izquierda: solo saludo
         HBox leftBox = new HBox(lblWelcome);
         leftBox.setAlignment(Pos.CENTER_LEFT);
 
-        // Derecha: orden de izquierda a derecha:
-        // Nuevo Mensaje, Perfil, Ajustes, Cerrar Sesión
         HBox rightIcons = new HBox(2, btnNuevo, btnPerfil, btnSettings, btnCerrar);
         rightIcons.setAlignment(Pos.CENTER_RIGHT);
 
@@ -164,7 +166,10 @@ public class MainInboxWindow extends Application {
 
         // --- Contenido principal ---
 
-        TabPane tabs = new TabPane(new Tab("Bandeja de Entrada", createTable(true)), new Tab("Mensajes Enviados", createTable(false)));
+        TabPane tabs = new TabPane(
+                new Tab("Bandeja de Entrada", createTable(true)),
+                new Tab("Mensajes Enviados", createTable(false))
+        );
         tabs.getTabs().forEach(t -> t.setClosable(false));
         tabs.getStyleClass().add("inbox-tabs");
 
@@ -174,9 +179,19 @@ public class MainInboxWindow extends Application {
         root.setPadding(new Insets(10));
         root.getStyleClass().add("main-root");
 
+        // Hacer la ventana arrastrable
+        root.setOnMousePressed(event -> {
+            xOffset = event.getSceneX();
+            yOffset = event.getSceneY();
+        });
+        root.setOnMouseDragged(event -> {
+            stage.setX(event.getScreenX() - xOffset);
+            stage.setY(event.getScreenY() - yOffset);
+        });
+
         // --- Escena y tema ---
 
-        Scene scene = new Scene(root, 800, 600);
+        Scene scene = new Scene(root, 791, 600);
         ThemeManager tm = ThemeManager.getInstance();
         scene.getStylesheets().setAll(tm.getCss());
         tm.themeProperty().addListener((obs, oldT, newT) -> {
@@ -213,7 +228,6 @@ public class MainInboxWindow extends Application {
         refresher.play();
     }
 
-
     private TableView<Mensaje> createTable(boolean inbox) {
         var list = inbox ? MessageStore.inboxMessages : MessageStore.sentMessages;
         TableView<Mensaje> table = new TableView<>(list);
@@ -239,17 +253,22 @@ public class MainInboxWindow extends Application {
                 Image icon = darkTheme ? trashIconDark : trashIconLight;
                 btn.setGraphic(new ImageView(icon));
                 btn.setStyle("-fx-background-color: transparent;");
-                btn.setOnAction(e -> {
-                    Mensaje m = getTableRow().getItem();
-                    if (m != null) deleteMessage(m);
-                });
+                btn.setOnAction(e -> { /* … */ });
                 trashButtons.add(btn);
+                // Centrar tanto el botón como la propia celda
+                setAlignment(Pos.CENTER);
             }
 
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : btn);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(btn);
+                    // Aseguramos que el contenido (el botón) está centrado
+                    setAlignment(Pos.CENTER);
+                }
             }
         });
 
