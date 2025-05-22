@@ -186,4 +186,10 @@
  .icon-button:pressed {
      -fx-background-color: #d5d5d5;
  }
+/* Oculta la scrollbar horizontal en todos los TableView */
+.table-view .scroll-bar:horizontal {
+    -fx-max-height: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+}
 

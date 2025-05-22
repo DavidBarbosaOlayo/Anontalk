@@ -37,7 +37,6 @@ public class MainApp extends Application {
     }
 
     public static void main(String[] args) {
-        // Arranca JavaFX; init() queda por defecto vacío
         launch(args);
     }
 }
