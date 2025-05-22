@@ -257,4 +257,11 @@ public class UserService {
         repo.delete(u);
     }
 
+    public void updateTheme(String username, boolean darkTheme) {
+        User user = repo.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        user.setDarkTheme(darkTheme);
+        repo.save(user);
+    }
+
 }

@@ -55,7 +55,7 @@ import java.security.spec.InvalidKeySpecException;
 })
 public class LoginWindow extends Application {
 
-    private final ConfigurableApplicationContext springCtx;
+    private ConfigurableApplicationContext springCtx;
     private final PopUpInfo pop = new PopUpInfo();
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
@@ -66,9 +66,17 @@ public class LoginWindow extends Application {
         this.springCtx = ctx;
     }
 
+    public LoginWindow() {
+    }
+
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
+
+        if (springCtx == null) {
+            springCtx = SpringApplication.run(LoginWindow.class);
+        }
+
         stage.setTitle("Login - Anontalk");
         stage.setOnCloseRequest(e -> {
             springCtx.close();
@@ -210,6 +218,10 @@ public class LoginWindow extends Application {
             PublicKey pubKey = RSAUtils.publicKeyFromBase64(pubB64);
             KeyManager.setPrivateKey(privKey);
             KeyManager.setPublicKey(pubKey);
+
+            boolean darkTheme = root.get("darkTheme").asBoolean();
+            ThemeManager tm = ThemeManager.getInstance();
+            tm.setTheme(darkTheme ? "dark" : "light");
 
             if (requireChange) {
                 Platform.runLater(() -> showForceChangeDialog(user, pwd));

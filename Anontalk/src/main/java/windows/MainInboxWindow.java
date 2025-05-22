@@ -150,6 +150,7 @@ public class MainInboxWindow extends Application {
             }
         });
 
+
         // --- Top bar ---
 
         HBox leftBox = new HBox(lblWelcome);
@@ -201,21 +202,17 @@ public class MainInboxWindow extends Application {
         // Handlers de tema para cambiar iconos
         MenuItem oscuro = temaMenu.getItems().get(0);
         MenuItem claro = temaMenu.getItems().get(1);
+
         oscuro.setOnAction(e -> {
             tm.setTheme("dark");
-            profileIconView.setImage(userIconDark);
-            settingsIconView.setImage(settingsIconDark);
-            trashButtons.forEach(btn -> btn.setGraphic(new ImageView(trashIconDark)));
-            newMsgIconView.setImage(newMsgIconDark);
-            logoutIconView.setImage(logoutIconDark);
+            updateThemeOnServer(true);
+            actualizarIconosTema();
         });
+
         claro.setOnAction(e -> {
             tm.setTheme("light");
-            profileIconView.setImage(userIconLight);
-            settingsIconView.setImage(settingsIconLight);
-            trashButtons.forEach(btn -> btn.setGraphic(new ImageView(trashIconLight)));
-            newMsgIconView.setImage(newMsgIconLight);
-            logoutIconView.setImage(logoutIconLight);
+            updateThemeOnServer(false);
+            actualizarIconosTema();
         });
 
         // --- Mostrar y refrescar ---
@@ -439,4 +436,48 @@ public class MainInboxWindow extends Application {
         } catch (Exception ignored) {
         }
     }
+
+    private void updateThemeOnServer(boolean darkTheme) {
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8080/api/users/" + currentUser + "/theme"))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(String.valueOf(darkTheme)))
+                    .build();
+
+            http.sendAsync(req, HttpResponse.BodyHandlers.discarding())
+                    .thenAccept(resp -> {
+                        if (resp.statusCode() != 200) {
+                            Platform.runLater(() -> pop.mostrarAlertaError("Error",
+                                    "No se pudo guardar la preferencia del tema"));
+                        }
+                    });
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void actualizarIconosTema() {
+        boolean isDark = ThemeManager.getInstance().getTheme().equals("dark");
+
+        Image userIcon = isDark ? userIconDark : userIconLight;
+        Image settingsIcon = isDark ? settingsIconDark : settingsIconLight;
+        Image newMsgIcon = isDark ? newMsgIconDark : newMsgIconLight;
+        Image logoutIcon = isDark ? logoutIconDark : logoutIconLight;
+        Image trashIcon = isDark ? trashIconDark : trashIconLight;
+
+        profileIconView.setImage(userIcon);
+        settingsIconView.setImage(settingsIcon);
+        newMsgIconView.setImage(newMsgIcon);
+        logoutIconView.setImage(logoutIcon);
+
+        // Actualizar iconos de la papelera en la tabla
+        trashButtons.forEach(btn ->
+                btn.setGraphic(new ImageView(trashIcon))
+        );
+    }
+
+
+
+
 }

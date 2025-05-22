@@ -31,6 +31,9 @@ public class User {
     @Column(name = "private_key_encrypted_base64", columnDefinition = "TEXT", nullable = false)
     private String privateKeyEncryptedBase64;
 
+    @Column(name = "dark_theme")
+    private boolean darkTheme = false;
+
     // ← getters/setters para todos los campos
 
     public Long getId() { return id; }
@@ -56,4 +59,7 @@ public class User {
 
     public String getPrivateKeyEncryptedBase64() { return privateKeyEncryptedBase64; }
     public void setPrivateKeyEncryptedBase64(String privateKeyEncryptedBase64) { this.privateKeyEncryptedBase64 = privateKeyEncryptedBase64; }
+
+    public boolean isDarkTheme() { return darkTheme; }
+    public void setDarkTheme(boolean darkTheme) { this.darkTheme = darkTheme; }
 }

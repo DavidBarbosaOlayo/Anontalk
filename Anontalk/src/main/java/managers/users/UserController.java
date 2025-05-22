@@ -32,14 +32,14 @@ public class UserController {
      * Login: si OK 200, si no lanza 401.
      */
     public static record LoginResponse(String salt, String publicKeyBase64, String privateKeyEncryptedBase64,
-                                       boolean requirePasswordChange) {
+                                       boolean requirePasswordChange, boolean darkTheme ) {
     }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody UserDTO dto) {
         boolean tokenFlow = svc.authenticate(dto.getUsername().trim(), dto.getPassword());
         var user = repo.findByUsername(dto.getUsername().trim()).get();
-        var resp = new LoginResponse(user.getSalt(), user.getPublicKeyBase64(), user.getPrivateKeyEncryptedBase64(),tokenFlow);
+        var resp = new LoginResponse(user.getSalt(), user.getPublicKeyBase64(), user.getPrivateKeyEncryptedBase64(),tokenFlow, user.isDarkTheme());
         return ResponseEntity.ok(resp);
     }
 
@@ -81,6 +81,15 @@ public class UserController {
     public ResponseEntity<Void> deleteAccount(@PathVariable String username) {
         svc.deleteAccount(username);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{username}/theme")
+    public ResponseEntity<Void> updateTheme(
+            @PathVariable String username,
+            @RequestBody boolean darkTheme
+    ) {
+        svc.updateTheme(username, darkTheme);
+        return ResponseEntity.ok().build();
     }
 }
 
