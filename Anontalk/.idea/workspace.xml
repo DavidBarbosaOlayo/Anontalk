@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="5f46f7b9-591d-49e2-9231-f6986fb3c703" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/encodings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/PopUpInfo.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/mensajes/Mensaje.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/mensajes/MensajeDTO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/mensajes/MensajeRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/mensajes/MensajeSB.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/mensajes/MensajeService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/mensajes/MensajesController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/mensajes/MessageStore.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/mensajes/chat/ChatController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/mensajes/chat/ChatMessage.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/mensajes/chat/WebSocketConfig.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/users/User.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/users/UserController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/users/UserDTO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/users/UserRepo.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/managers/users/UserService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/encryption/AESUtils.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/encryption/HybridCrypto.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/encryption/KeyManager.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/encryption/RSAUtils.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/passwords/ChangeEmailDTO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/passwords/ChangePasswordDTO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/passwords/ForgotPasswordDTO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/passwords/PasswordRTRepo.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/passwords/PasswordResetToken.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/passwords/PasswordsUtils.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/security/passwords/ResetPasswordDTO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/utils/LocaleManager.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/windows/ChatWindow.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/windows/LoginWindow.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/windows/MainApp.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/windows/MainInboxWindow.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/windows/ProfileWindow.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/windows/SplashWindow.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/windows/ThemeManager.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/ajustes.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/ajustes2.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/i18n/messages_ca.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/i18n/messages_en.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/i18n/messages_es.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/logOut.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/logOut2.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/newM.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/newM2.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/papelera.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/papelera2.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/tema2.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/temas.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/user.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/user2.png" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="2xdYGk9HCch0gGpm71CheCEVClL" />
+  <component name="ProjectViewState">
+    <option name="flattenModules" value="true" />
+    <option name="showLibraryContents" value="true" />
+    <option name="showMembers" value="true" />
+    <option name="showVisibilityIcons" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.App.executor": "Run",
+    "Application.MainApp.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/home/david/Escritorio/Anontalk",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.0"
+  }
+}]]></component>
+  <component name="RunManager">
+    <configuration name="App" type="Application" factoryName="Application">
+      <option name="ALTERNATIVE_JRE_PATH" value="corretto-21" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+      <option name="MAIN_CLASS_NAME" value="windows.MainApp" />
+      <module name="Anontalk" />
+      <option name="PROGRAM_PARAMETERS" value="--module-path $USER_HOME$/Descargas/javafx-sdk-23/lib --add-modules javafx.controls,javafx.fxml " />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="5f46f7b9-591d-49e2-9231-f6986fb3c703" name="Changes" comment="" />
+      <created>1748269323222</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1748269323222</updated>
+    </task>
+    <servers />
+  </component>
+</project>
