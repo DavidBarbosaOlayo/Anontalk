@@ -35,21 +35,17 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.PublicKey;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.text.MessageFormat;
+import java.util.*;
 
 public class MainInboxWindow extends Application {
 
-    /* -------- estado -------- */
     private final String currentUser;
     private final PopUpInfo pop = new PopUpInfo();
-    private Stage stage;
-
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule()).disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-
     private Timeline refresher;
+
     // Iconos claro/oscuro
     private final Image userIconLight = new Image(getClass().getResourceAsStream("/user.png"), 30, 30, true, true);
     private final Image userIconDark = new Image(getClass().getResourceAsStream("/user2.png"), 30, 30, true, true);
@@ -62,7 +58,6 @@ public class MainInboxWindow extends Application {
     private final Image logoutIconLight = new Image(getClass().getResourceAsStream("/logOut.png"), 30, 28, true, true);
     private final Image logoutIconDark = new Image(getClass().getResourceAsStream("/logOut2.png"), 30, 28, true, true);
 
-    // Views y estado de tema
     private ImageView profileIconView;
     private ImageView settingsIconView;
     private ImageView newMsgIconView;
@@ -72,6 +67,9 @@ public class MainInboxWindow extends Application {
     private boolean darkTheme = false;
     private final ConfigurableApplicationContext springCtx;
 
+    private Stage stage;
+    private Scene scene;
+    private ResourceBundle b;
     private double xOffset = 0;
     private double yOffset = 0;
 
@@ -83,65 +81,105 @@ public class MainInboxWindow extends Application {
     @Override
     public void start(Stage stage) {
         this.stage = stage;
+        // Inicializa en inglés por defecto y carga ResourceBundle
+        changeLanguage(Locale.ENGLISH);
 
         // Quitar la decoración nativa
         stage.initStyle(StageStyle.UNDECORATED);
-        stage.setTitle("Bandeja de Entrada - Anontalk");
         stage.setOnCloseRequest(e -> {
             if (refresher != null) refresher.stop();
             Platform.exit();
             System.exit(0);
         });
 
-        // Texto de bienvenida
-        Label lblWelcome = new Label("Bienvenido, " + currentUser);
+        // Construir interfaz
+        BorderPane root = buildUI();
+        this.scene = new Scene(root, 791, 600);
+        ThemeManager tm = ThemeManager.getInstance();
+        scene.getStylesheets().setAll(tm.getCss());
+        tm.themeProperty().addListener((o, old, ne) -> scene.getStylesheets().setAll(tm.getCss()));
+
+        stage.setScene(scene);
+        stage.show();
+
+        // Cargar y refrescar mensajes periódicamente
+        loadMessages();
+        refresher = new Timeline(new KeyFrame(Duration.seconds(5), ev -> refreshInbox()));
+        refresher.setCycleCount(Timeline.INDEFINITE);
+        refresher.play();
+    }
+
+    private void changeLanguage(Locale locale) {
+        Locale.setDefault(locale);
+        b = ResourceBundle.getBundle("i18n/messages", locale);
+        // Si la UI ya está mostrada, reconstruir conservando tamaño
+        if (stage != null && scene != null) {
+            double w = scene.getWidth();
+            double h = scene.getHeight();
+            BorderPane root = buildUI();
+            this.scene = new Scene(root, w, h);
+            ThemeManager tm = ThemeManager.getInstance();
+            scene.getStylesheets().setAll(tm.getCss());
+            tm.themeProperty().addListener((o, old, ne) -> scene.getStylesheets().setAll(tm.getCss()));
+            stage.setScene(scene);
+        }
+    }
+
+    private BorderPane buildUI() {
+        // Título de la ventana
+        stage.setTitle(b.getString("inbox.window.title"));
+
+        // Label de bienvenida
+        Label lblWelcome = new Label(MessageFormat.format(b.getString("inbox.welcome"), currentUser));
         lblWelcome.getStyleClass().add("welcome-label");
 
-        // --- Botones de icono ---
-
-        // Perfil
-        profileIconView = new ImageView(userIconLight);
+        // Botón Perfil
+        profileIconView = new ImageView(darkTheme ? userIconDark : userIconLight);
         Button btnPerfil = new Button();
         btnPerfil.setGraphic(profileIconView);
         btnPerfil.getStyleClass().add("icon-button");
         btnPerfil.setOnAction(e -> {
             try {
-                new ProfileWindow(currentUser, this.stage, springCtx).show();
+                new ProfileWindow(currentUser, stage, springCtx).show();
             } catch (Exception ex) {
-                pop.mostrarAlertaError("Error", "No se pudo abrir la ventana de perfil.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("profile.alert.error.openProfile"));
             }
         });
 
-        // Ajustes (menú idioma/tema)
-        settingsIconView = new ImageView(settingsIconLight);
-        Menu idiomaMenu = new Menu("Idioma", null, new MenuItem("Castellano"), new MenuItem("Catalán"), new MenuItem("Inglés"));
-        Menu temaMenu = new Menu("Tema", null, new MenuItem("Oscuro"), new MenuItem("Claro"));
+        // Botón Ajustes (Idioma/Tema)
+        settingsIconView = new ImageView(darkTheme ? settingsIconDark : settingsIconLight);
+        Menu idiomaMenu = new Menu(b.getString("menu.language"), null, new MenuItem(b.getString("menu.language.spanish")), new MenuItem(b.getString("menu.language.catalan")), new MenuItem(b.getString("menu.language.english")));
+        Menu temaMenu = new Menu(b.getString("menu.theme"), null, new MenuItem(b.getString("menu.theme.dark")), new MenuItem(b.getString("menu.theme.light")));
         MenuButton btnSettings = new MenuButton();
         btnSettings.setGraphic(settingsIconView);
         btnSettings.getStyleClass().add("icon-button");
         btnSettings.getItems().addAll(idiomaMenu, temaMenu);
 
-        // Handlers idioma
-        idiomaMenu.getItems().get(0).setOnAction(e -> Locale.setDefault(new Locale("es", "ES")));
-        idiomaMenu.getItems().get(1).setOnAction(e -> Locale.setDefault(new Locale("ca", "ES")));
-        idiomaMenu.getItems().get(2).setOnAction(e -> Locale.setDefault(new Locale("en", "US")));
+        // Handlers Idioma
+        idiomaMenu.getItems().get(0).setOnAction(e -> changeLanguage(new Locale("es", "ES")));
+        idiomaMenu.getItems().get(1).setOnAction(e -> changeLanguage(new Locale("ca", "ES")));
+        idiomaMenu.getItems().get(2).setOnAction(e -> changeLanguage(Locale.ENGLISH));
 
-        // Nuevo Mensaje
-        newMsgIconView = new ImageView(newMsgIconLight);
+        // Handlers Tema
+        temaMenu.getItems().get(0).setOnAction(e -> setDarkTheme());
+        temaMenu.getItems().get(1).setOnAction(e -> setLightTheme());
+
+        // Botón Nuevo Mensaje
+        newMsgIconView = new ImageView(darkTheme ? newMsgIconDark : newMsgIconLight);
         Button btnNuevo = new Button();
         btnNuevo.setGraphic(newMsgIconView);
         btnNuevo.getStyleClass().add("icon-button");
         btnNuevo.setOnAction(e -> showSendDialog());
 
-        // Cerrar Sesión
-        logoutIconView = new ImageView(logoutIconLight);
+        // Botón Cerrar Sesión
+        logoutIconView = new ImageView(darkTheme ? logoutIconDark : logoutIconLight);
         Button btnCerrar = new Button();
         btnCerrar.setGraphic(logoutIconView);
         btnCerrar.getStyleClass().add("icon-button");
         btnCerrar.setOnAction(e -> {
             if (refresher != null) refresher.stop();
             stage.close();
-            pop.mostrarAlertaInformativa("Cerrar Sesión", "Has cerrado sesión correctamente.");
+            pop.mostrarAlertaInformativa(b.getString("session.logout.title"), b.getString("session.logout.info"));
             try {
                 new LoginWindow(springCtx).start(new Stage());
             } catch (Exception ex) {
@@ -150,143 +188,110 @@ public class MainInboxWindow extends Application {
             }
         });
 
-        // --- Top bar ---
-
+        // Top bar layout
         HBox leftBox = new HBox(lblWelcome);
         leftBox.setAlignment(Pos.CENTER_LEFT);
-
         HBox rightIcons = new HBox(2, btnNuevo, btnPerfil, btnSettings, btnCerrar);
         rightIcons.setAlignment(Pos.CENTER_RIGHT);
-
         BorderPane topBar = new BorderPane();
         topBar.setLeft(leftBox);
         topBar.setRight(rightIcons);
         topBar.setPadding(new Insets(10));
         topBar.getStyleClass().add("top-bar");
 
-        // --- Contenido principal ---
-
-        TabPane tabs = new TabPane(
-                new Tab("Bandeja de Entrada", createTable(true)),
-                new Tab("Mensajes Enviados", createTable(false))
-        );
+        // Pestañas Inbox/Sent
+        TabPane tabs = new TabPane(new Tab(b.getString("tab.inbox"), createTable(true)), new Tab(b.getString("tab.sent"), createTable(false)));
         tabs.getTabs().forEach(t -> t.setClosable(false));
         tabs.getStyleClass().add("inbox-tabs");
 
+        // Root layout
         BorderPane root = new BorderPane();
         root.setTop(topBar);
         root.setCenter(tabs);
         root.setPadding(new Insets(10));
         root.getStyleClass().add("main-root");
 
-        // Hacer la ventana arrastrable
-        root.setOnMousePressed(event -> {
-            xOffset = event.getSceneX();
-            yOffset = event.getSceneY();
+        // Ventana arrastrable
+        root.setOnMousePressed(ev -> {
+            xOffset = ev.getSceneX();
+            yOffset = ev.getSceneY();
         });
-        root.setOnMouseDragged(event -> {
-            stage.setX(event.getScreenX() - xOffset);
-            stage.setY(event.getScreenY() - yOffset);
+        root.setOnMouseDragged(ev -> {
+            stage.setX(ev.getScreenX() - xOffset);
+            stage.setY(ev.getScreenY() - yOffset);
         });
 
-        // --- Escena y tema ---
+        return root;
+    }
 
-        Scene scene = new Scene(root, 791, 600);
+    private void setDarkTheme() {
         ThemeManager tm = ThemeManager.getInstance();
+        tm.setTheme("dark");
+        darkTheme = true;
         scene.getStylesheets().setAll(tm.getCss());
-        tm.themeProperty().addListener((obs, oldT, newT) -> {
-            scene.getStylesheets().setAll(tm.getCss());
-        });
+        profileIconView.setImage(userIconDark);
+        settingsIconView.setImage(settingsIconDark);
+        trashButtons.forEach(btn -> btn.setGraphic(new ImageView(trashIconDark)));
+        newMsgIconView.setImage(newMsgIconDark);
+        logoutIconView.setImage(logoutIconDark);
+    }
 
-        // Handlers de tema para cambiar iconos
-        MenuItem oscuro = temaMenu.getItems().get(0);
-        MenuItem claro = temaMenu.getItems().get(1);
-        oscuro.setOnAction(e -> {
-            tm.setTheme("dark");
-            profileIconView.setImage(userIconDark);
-            settingsIconView.setImage(settingsIconDark);
-            trashButtons.forEach(btn -> btn.setGraphic(new ImageView(trashIconDark)));
-            newMsgIconView.setImage(newMsgIconDark);
-            logoutIconView.setImage(logoutIconDark);
-        });
-        claro.setOnAction(e -> {
-            tm.setTheme("light");
-            profileIconView.setImage(userIconLight);
-            settingsIconView.setImage(settingsIconLight);
-            trashButtons.forEach(btn -> btn.setGraphic(new ImageView(trashIconLight)));
-            newMsgIconView.setImage(newMsgIconLight);
-            logoutIconView.setImage(logoutIconLight);
-        });
-
-        // --- Mostrar y refrescar ---
-
-        stage.setScene(scene);
-        stage.show();
-        loadMessages();
-        refresher = new Timeline(new KeyFrame(Duration.seconds(5), ev -> refreshInbox()));
-        refresher.setCycleCount(Timeline.INDEFINITE);
-        refresher.play();
+    private void setLightTheme() {
+        ThemeManager tm = ThemeManager.getInstance();
+        tm.setTheme("light");
+        darkTheme = false;
+        scene.getStylesheets().setAll(tm.getCss());
+        profileIconView.setImage(userIconLight);
+        settingsIconView.setImage(settingsIconLight);
+        trashButtons.forEach(btn -> btn.setGraphic(new ImageView(trashIconLight)));
+        newMsgIconView.setImage(newMsgIconLight);
+        logoutIconView.setImage(logoutIconLight);
     }
 
     private TableView<Mensaje> createTable(boolean inbox) {
-        var list = inbox ? MessageStore.inboxMessages : MessageStore.sentMessages;
-        TableView<Mensaje> table = new TableView<>(list);
+        TableView<Mensaje> table = new TableView<>(inbox ? MessageStore.inboxMessages : MessageStore.sentMessages);
         table.getStyleClass().add("bandeja-tabla");
 
-        // Columna Remitente/Destinatario
-        TableColumn<Mensaje, String> colParty = new TableColumn<>(inbox ? "Remitente" : "Destinatario");
+        String partyKey = inbox ? "table.column.sender" : "table.column.recipient";
+        TableColumn<Mensaje, String> colParty = new TableColumn<>(b.getString(partyKey));
         colParty.setCellValueFactory(new PropertyValueFactory<>("sender"));
         colParty.setPrefWidth(150);
 
-        // Columna Asunto
-        TableColumn<Mensaje, String> colAsunto = new TableColumn<>("Asunto");
-        colAsunto.setCellValueFactory(new PropertyValueFactory<>("asunto"));
-        colAsunto.setPrefWidth(580);
+        TableColumn<Mensaje, String> colSubject = new TableColumn<>(b.getString("table.column.subject"));
+        colSubject.setCellValueFactory(new PropertyValueFactory<>("asunto"));
+        colSubject.setPrefWidth(580);
 
-        // Columna Eliminar
         TableColumn<Mensaje, Void> colDel = new TableColumn<>("");
         colDel.setPrefWidth(40);
         colDel.setCellFactory(tc -> new TableCell<>() {
             private final Button btn = new Button();
 
             {
-                Image icon = darkTheme ? trashIconDark : trashIconLight;
-                btn.setGraphic(new ImageView(icon));
+                btn.setGraphic(new ImageView(darkTheme ? trashIconDark : trashIconLight));
                 btn.setStyle("-fx-background-color: transparent;");
-                btn.setOnAction(e -> { /* … */ });
+                btn.setOnAction(e -> deleteMessage(getTableView().getItems().get(getIndex())));
                 trashButtons.add(btn);
-                // Centrar tanto el botón como la propia celda
                 setAlignment(Pos.CENTER);
             }
 
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty) {
-                    setGraphic(null);
-                } else {
-                    setGraphic(btn);
-                    // Aseguramos que el contenido (el botón) está centrado
-                    setAlignment(Pos.CENTER);
-                }
+                setGraphic(empty ? null : btn);
             }
         });
 
-        table.getColumns().addAll(colParty, colAsunto, colDel);
-        table.setPlaceholder(new Label(inbox ? "No hay mensajes." : "Nada enviado."));
+        table.getColumns().addAll(colParty, colSubject, colDel);
+        table.setPlaceholder(new Label(inbox ? b.getString("table.placeholder.inbox") : b.getString("table.placeholder.sent")));
         table.setRowFactory(tv -> {
             TableRow<Mensaje> row = new TableRow<>();
             row.setOnMouseClicked(ev -> {
-                if (!row.isEmpty() && ev.getClickCount() == 2) {
-                    new ChatWindow(currentUser, row.getItem()).show();
-                }
+                if (!row.isEmpty() && ev.getClickCount() == 2) new ChatWindow(currentUser, row.getItem()).show();
             });
             return row;
         });
-
         return table;
     }
-
 
     private void loadMessages() {
         refreshInbox();
@@ -337,96 +342,78 @@ public class MainInboxWindow extends Application {
 
     private void showSendDialog() {
         Stage dialog = new Stage();
-        dialog.setTitle("Redactar mensaje");
+        dialog.setTitle(b.getString("dialog.newMessage.title"));
 
-        // Destinatario
         TextField txtPara = new TextField();
-        txtPara.setPromptText("Para");
-        // en oscuro: ya usa la clase "text-field" por defecto, y tu tema2.css la estiliza
-
-        // Asunto
+        txtPara.setPromptText(b.getString("dialog.newMessage.field.to"));
         TextField txtAsunto = new TextField();
-        txtAsunto.setPromptText("Asunto");
-        // idem: TextField hereda .text-field
-
-        // Cuerpo del mensaje
+        txtAsunto.setPromptText(b.getString("dialog.newMessage.field.subject"));
         TextArea txtCuerpo = new TextArea();
-        txtCuerpo.setPromptText("Escribe tu mensaje...");
+        txtCuerpo.setPromptText(b.getString("dialog.newMessage.field.body"));
         txtCuerpo.setWrapText(true);
         txtCuerpo.setPrefHeight(200);
-        // aplicamos la clase para que tenga fondo oscuro como el chat
         txtCuerpo.getStyleClass().add("chat-textarea");
 
-        // Botones
-        Button btnEnviar = new Button("Enviar");
-        Button btnCancelar = new Button("Cancelar");
+        Button btnEnviar = new Button(b.getString("dialog.newMessage.button.send"));
+        Button btnCancelar = new Button(b.getString("dialog.newMessage.button.cancel"));
         btnCancelar.setOnAction(e -> dialog.close());
 
         btnEnviar.setOnAction(e -> {
             String dest = txtPara.getText().trim();
             String cuerpo = txtCuerpo.getText().trim();
             if (dest.isBlank() || cuerpo.isBlank()) {
-                pop.mostrarAlertaError("Error", "Completa al menos el destinatario y el cuerpo.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.incomplete"));
                 return;
             }
             try {
                 HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + dest + "/publicKey")).GET().build();
                 HttpResponse<String> pkRes = http.send(pkReq, HttpResponse.BodyHandlers.ofString());
-
                 if (pkRes.statusCode() == 404) {
-                    pop.mostrarAlertaError("Usuario desconocido", "El usuario '" + dest + "' no existe.");
+                    pop.mostrarAlertaError(b.getString("common.error"), MessageFormat.format(b.getString("dialog.newMessage.error.unknownUser"), dest));
                     return;
                 } else if (pkRes.statusCode() != 200) {
-                    pop.mostrarAlertaError("Error servidor", "No se pudo verificar el usuario.");
+                    pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.server"));
                     return;
                 }
-
                 PublicKey destPk = RSAUtils.publicKeyFromBase64(pkRes.body());
-                HybridCrypto.HybridPayload p = HybridCrypto.encrypt(cuerpo, destPk);
+                var payload = HybridCrypto.encrypt(cuerpo, destPk);
 
                 MensajeDTO dto = new MensajeDTO();
                 dto.setRemitente(currentUser);
                 dto.setDestinatario(dest);
                 dto.setAsunto(txtAsunto.getText().trim());
-                dto.setCipherTextBase64(p.cipherB64());
-                dto.setEncKeyBase64(p.encKeyB64());
-                dto.setIvBase64(p.ivB64());
+                dto.setCipherTextBase64(payload.cipherB64());
+                dto.setEncKeyBase64(payload.encKeyB64());
+                dto.setIvBase64(payload.ivB64());
 
                 String json = mapper.writeValueAsString(dto);
                 HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
-
-                http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(r -> {
+                http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(r -> Platform.runLater(() -> {
                     if (r.statusCode() == 200) {
-                        Platform.runLater(() -> {
-                            refreshSent();
-                            dialog.close();
-                            pop.mostrarAlertaInformativa("Enviado", "Mensaje enviado con éxito.");
-                        });
+                        refreshSent();
+                        dialog.close();
+                        pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("dialog.newMessage.info.sent"));
                     } else {
-                        Platform.runLater(() -> pop.mostrarAlertaError("Error", "No se pudo enviar el mensaje."));
+                        pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.send"));
                     }
-                });
+                }));
             } catch (Exception ex) {
-                pop.mostrarAlertaError("Error", "Fallo al cifrar o enviar el mensaje.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.send"));
             }
         });
 
         HBox botones = new HBox(10, btnEnviar, btnCancelar);
         botones.setAlignment(Pos.CENTER_RIGHT);
-
         VBox layout = new VBox(10, txtPara, txtAsunto, txtCuerpo, botones);
         layout.setPadding(new Insets(20));
         layout.setPrefWidth(500);
 
-        Scene scene = new Scene(layout);
-        // Aplica dinámicamente el tema (claro u oscuro)
+        Scene dlgScene = new Scene(layout);
         ThemeManager tm = ThemeManager.getInstance();
-        scene.getStylesheets().setAll(tm.getCss());
-        tm.themeProperty().addListener((obs, oldT, newT) -> {
-            scene.getStylesheets().setAll(tm.getCss());
-        });
+        dlgScene.getStylesheets().setAll(tm.getCss());
+        tm.themeProperty().addListener((o, old, ne) -> dlgScene.getStylesheets().setAll(tm.getCss()));
 
-        dialog.setScene(scene);
+        dialog.setScene(dlgScene);
         dialog.show();
     }
 

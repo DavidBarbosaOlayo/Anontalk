@@ -13,6 +13,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import managers.PopUpInfo;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -21,83 +22,57 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.text.MessageFormat;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
 public class ProfileWindow extends Stage {
 
-    private final PopUpInfo pop = new PopUpInfo();
     private static final double WIDTH = 800;
     private static final double HEIGHT = 700;
     private static final double BTN_WIDTH = 250;
     private static final double FIELD_WIDTH = 200;
 
-    private final String currentUser;
-    private final Stage inboxStage;
+    private final PopUpInfo pop = new PopUpInfo();
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
+
+    private final String currentUser;
+    private final Stage inboxStage;
     private final ConfigurableApplicationContext springCtx;
+    private final ResourceBundle b;
 
     public ProfileWindow(String currentUser, Stage inboxStage, ConfigurableApplicationContext springCtx) {
         this.currentUser = currentUser;
         this.inboxStage = inboxStage;
-        this.springCtx   = springCtx;
+        this.springCtx = springCtx;
+        // Cargamos bundle en inglés
+        this.b = ResourceBundle.getBundle("i18n/messages", Locale.ENGLISH);
 
-        setTitle("Perfil de " + currentUser);
+        // ---------- Ventana ----------
+        setTitle(MessageFormat.format(b.getString("profile.window.title"), currentUser));
 
-        Label lblTitle = new Label("Perfil Usuario");
+        // ---------- Título ----------
+        Label lblTitle = new Label(b.getString("profile.title"));
         lblTitle.getStyleClass().add("profile-title");
         lblTitle.setAlignment(Pos.CENTER);
         lblTitle.setPadding(new Insets(30, 0, 0, 0));
 
-        VBox rootSections = new VBox(
-                30,
-                buildSection("Cambiar contraseña", buildPwdContent()),
-                buildSection("Cambiar email", buildEmailContent())
-        );
+        // ---------- Secciones ----------
+        VBox rootSections = new VBox(30, buildSection(b.getString("profile.section.changePassword"), buildPwdContent()), buildSection(b.getString("profile.section.changeEmail"), buildEmailContent()));
         rootSections.setAlignment(Pos.TOP_CENTER);
 
-        Button btnDel = new Button("Eliminar cuenta");
+        // ---------- Botón Eliminar cuenta ----------
+        Button btnDel = new Button(b.getString("profile.button.deleteAccount"));
         btnDel.setPrefWidth(BTN_WIDTH);
-        btnDel.setAlignment(Pos.CENTER);
         btnDel.getStyleClass().add("delete-button");
-        // En ProfileWindow.java, dentro del constructor, reemplaza el bloque de elim. cuenta por:
-
-        btnDel.setOnAction(e -> {
-            TextInputDialog dlg = new TextInputDialog();
-            dlg.setTitle("Eliminar cuenta");
-            dlg.setHeaderText("Para confirmar, escribe:\n\"Estoy seguro de eliminar la cuenta\"");
-            dlg.setContentText("Confirmación:");
-            dlg.showAndWait().ifPresent(input -> {
-                if ("Estoy seguro de eliminar la cuenta".equals(input.trim())) {
-                    HttpRequest req = HttpRequest.newBuilder()
-                            .uri(URI.create("http://localhost:8080/api/users/" + currentUser))
-                            .DELETE()
-                            .build();
-                    http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                            .thenAccept(resp -> Platform.runLater(() -> {
-                                if (resp.statusCode() == 200 || resp.statusCode() == 204) {
-                                    pop.mostrarAlertaInformativa("Cuenta eliminada", "Tu cuenta ha sido eliminada correctamente.");
-                                    this.close();
-                                    inboxStage.close();
-                                    try {
-                                        // ← Volvemos al login directamente con el mismo contexto
-                                        new LoginWindow(springCtx).start(new Stage());
-                                    } catch (Exception ex) {
-                                        pop.mostrarAlertaError("Error", "No se pudo abrir la ventana de login.");
-                                    }
-                                } else {
-                                    pop.mostrarAlertaError("Error", "No se pudo eliminar la cuenta (código " + resp.statusCode() + ").");
-                                }
-                            }));
-                } else {
-                    pop.mostrarAlertaError("Confirmación incorrecta", "El texto no coincide. Operación cancelada.");
-                }
-            });
-        });
+        btnDel.setOnAction(e -> showDeleteDialog());
 
         VBox deleteBox = new VBox(btnDel);
         deleteBox.setAlignment(Pos.CENTER);
         deleteBox.setPadding(new Insets(20, 0, 0, 0));
 
+        // ---------- Layout principal ----------
         VBox content = new VBox(40, lblTitle, rootSections, deleteBox);
         content.setAlignment(Pos.TOP_CENTER);
         content.setPadding(new Insets(20));
@@ -108,21 +83,49 @@ public class ProfileWindow extends Stage {
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
         Scene scene = new Scene(scrollPane, WIDTH, HEIGHT);
-
-        // Gestión de tema
+        // Tema
         ThemeManager tm = ThemeManager.getInstance();
         scene.getStylesheets().setAll(tm.getCss());
-        tm.themeProperty().addListener((obs, oldT, newT) -> {
-            scene.getStylesheets().setAll(tm.getCss());
-        });
+        tm.themeProperty().addListener((obs, oldT, newT) -> scene.getStylesheets().setAll(tm.getCss()));
 
         setScene(scene);
+    }
+
+    private void showDeleteDialog() {
+        TextInputDialog dlg = new TextInputDialog();
+        dlg.setTitle(b.getString("profile.dialog.deleteAccount.title"));
+        dlg.setHeaderText(b.getString("profile.dialog.deleteAccount.header"));
+        dlg.setContentText(b.getString("profile.dialog.deleteAccount.content"));
+
+        dlg.showAndWait().ifPresent(input -> {
+            // Extraemos la segunda línea del header y quitamos las comillas
+            String[] parts = b.getString("profile.dialog.deleteAccount.header").split("\n");
+            String expected = parts[1].replace("\"", "").trim();
+            if (input.trim().equals(expected)) {
+                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + currentUser)).DELETE().build();
+                http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> Platform.runLater(() -> {
+                    if (resp.statusCode() == 200 || resp.statusCode() == 204) {
+                        pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("profile.alert.info.accountDeleted"));
+                        this.close();
+                        inboxStage.close();
+                        try {
+                            new LoginWindow(springCtx).start(new Stage());
+                        } catch (Exception ex) {
+                            pop.mostrarAlertaError(b.getString("common.error"), b.getString("profile.alert.error.openProfile"));
+                        }
+                    } else {
+                        pop.mostrarAlertaError(b.getString("common.error"), MessageFormat.format(b.getString("profile.alert.error.accountNotDeleted"), resp.statusCode()));
+                    }
+                }));
+            } else {
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("profile.alert.error.confirmation"));
+            }
+        });
     }
 
     private VBox buildSection(String headerText, Node content) {
         Button header = new Button(headerText);
         header.setPrefWidth(BTN_WIDTH);
-        header.setAlignment(Pos.CENTER);
         header.getStyleClass().add("section-header");
 
         content.setVisible(false);
@@ -148,38 +151,37 @@ public class ProfileWindow extends Stage {
     }
 
     private VBox buildPwdContent() {
-        Label lbl = new Label("Cambiar contraseña");
+        Label lbl = new Label(b.getString("profile.section.changePassword"));
         lbl.getStyleClass().add("section-label");
 
         PasswordField txtOld = new PasswordField();
-        txtOld.setPromptText("Contraseña actual");
+        txtOld.setPromptText(b.getString("profile.field.currentPassword"));
         txtOld.setPrefWidth(FIELD_WIDTH);
         txtOld.setMaxWidth(FIELD_WIDTH);
 
         PasswordField txtNew = new PasswordField();
-        txtNew.setPromptText("Nueva contraseña");
+        txtNew.setPromptText(b.getString("profile.field.newPassword"));
         txtNew.setPrefWidth(FIELD_WIDTH);
         txtNew.setMaxWidth(FIELD_WIDTH);
 
         PasswordField txtConfirm = new PasswordField();
-        txtConfirm.setPromptText("Confirma nueva contraseña");
+        txtConfirm.setPromptText(b.getString("profile.field.confirmPassword"));
         txtConfirm.setPrefWidth(FIELD_WIDTH);
         txtConfirm.setMaxWidth(FIELD_WIDTH);
 
-        Button btnSave = new Button("Guardar");
+        Button btnSave = new Button(b.getString("profile.button.save"));
         btnSave.setPrefWidth(BTN_WIDTH);
-        btnSave.setAlignment(Pos.CENTER);
         btnSave.getStyleClass().add("save-button");
         btnSave.setOnAction(e -> {
             String oldPwd = txtOld.getText().trim();
             String newPwd = txtNew.getText().trim();
             String confPwd = txtConfirm.getText().trim();
             if (oldPwd.isEmpty() || newPwd.isEmpty() || confPwd.isEmpty()) {
-                pop.mostrarAlertaError("Error", "Completa todos los campos.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("profile.alert.error.fillFields"));
                 return;
             }
             if (!newPwd.equals(confPwd)) {
-                pop.mostrarAlertaError("Error", "Las nuevas contraseñas no coinciden.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("profile.alert.error.passwordMismatch"));
                 return;
             }
             try {
@@ -187,13 +189,13 @@ public class ProfileWindow extends Stage {
                 HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/change-password")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
                 http.sendAsync(req, HttpResponse.BodyHandlers.discarding()).thenAccept(resp -> Platform.runLater(() -> {
                     if (resp.statusCode() == 200) {
-                        pop.mostrarAlertaInformativa("Éxito", "Contraseña cambiada correctamente.");
+                        pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("profile.alert.info.passwordChanged"));
                     } else {
-                        pop.mostrarAlertaError("Error", "No se pudo cambiar la contraseña (" + resp.statusCode() + ").");
+                        pop.mostrarAlertaError(b.getString("common.error"), MessageFormat.format(b.getString("profile.alert.error.passwordChangeFailed"), resp.statusCode()));
                     }
                 }));
             } catch (Exception ex) {
-                pop.mostrarAlertaError("Error", "Error al conectar con el servidor.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("profile.alert.error.connection"));
             }
         });
 
@@ -204,32 +206,31 @@ public class ProfileWindow extends Stage {
     }
 
     private VBox buildEmailContent() {
-        Label lbl = new Label("Cambiar email");
+        Label lbl = new Label(b.getString("profile.section.changeEmail"));
         lbl.getStyleClass().add("section-label");
 
         TextField txtNew = new TextField();
-        txtNew.setPromptText("Nuevo correo");
+        txtNew.setPromptText(b.getString("profile.field.newEmail"));
         txtNew.setPrefWidth(FIELD_WIDTH);
         txtNew.setMaxWidth(FIELD_WIDTH);
 
         TextField txtConfirm = new TextField();
-        txtConfirm.setPromptText("Confirma correo");
+        txtConfirm.setPromptText(b.getString("profile.field.confirmEmail"));
         txtConfirm.setPrefWidth(FIELD_WIDTH);
         txtConfirm.setMaxWidth(FIELD_WIDTH);
 
-        Button btnSave = new Button("Guardar");
+        Button btnSave = new Button(b.getString("profile.button.save"));
         btnSave.setPrefWidth(BTN_WIDTH);
-        btnSave.setAlignment(Pos.CENTER);
         btnSave.getStyleClass().add("save-button");
         btnSave.setOnAction(e -> {
             String newEmail = txtNew.getText().trim();
             String confEmail = txtConfirm.getText().trim();
             if (newEmail.isEmpty() || confEmail.isEmpty()) {
-                pop.mostrarAlertaError("Error", "Completa ambos campos.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("profile.alert.error.fillEmailFields"));
                 return;
             }
             if (!newEmail.equals(confEmail)) {
-                pop.mostrarAlertaError("Error", "Los correos no coinciden.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("profile.alert.error.emailMismatch"));
                 return;
             }
             try {
@@ -237,13 +238,13 @@ public class ProfileWindow extends Stage {
                 HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/change-email")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
                 http.sendAsync(req, HttpResponse.BodyHandlers.discarding()).thenAccept(resp -> Platform.runLater(() -> {
                     if (resp.statusCode() == 200) {
-                        pop.mostrarAlertaInformativa("Éxito", "Email cambiado correctamente.");
+                        pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("profile.alert.info.emailChanged"));
                     } else {
-                        pop.mostrarAlertaError("Error", "No se pudo cambiar el email (" + resp.statusCode() + ").");
+                        pop.mostrarAlertaError(b.getString("common.error"), MessageFormat.format(b.getString("profile.alert.error.emailChangeFailed"), resp.statusCode()));
                     }
                 }));
             } catch (Exception ex) {
-                pop.mostrarAlertaError("Error", "Error al conectar con el servidor.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("profile.alert.error.connection"));
             }
         });
 

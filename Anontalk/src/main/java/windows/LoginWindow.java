@@ -17,8 +17,8 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import managers.PopUpInfo;
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -36,23 +36,13 @@ import java.net.http.HttpResponse;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
+import java.text.MessageFormat;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
-@SpringBootApplication(scanBasePackages = {
-        "windows",
-        "managers.mensajes",
-        "managers.users",
-        "security.passwords"
-})
-@EnableJpaRepositories(basePackages = {
-        "managers.mensajes",
-        "managers.users",
-        "security.passwords"
-})
-@EntityScan(basePackages = {
-        "managers.mensajes",
-        "managers.users",
-        "security.passwords"
-})
+@SpringBootApplication(scanBasePackages = {"windows", "managers.mensajes", "managers.users", "security.passwords"})
+@EnableJpaRepositories(basePackages = {"managers.mensajes", "managers.users", "security.passwords"})
+@EntityScan(basePackages = {"managers.mensajes", "managers.users", "security.passwords"})
 public class LoginWindow extends Application {
 
     private final ConfigurableApplicationContext springCtx;
@@ -60,37 +50,48 @@ public class LoginWindow extends Application {
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
     private Stage primaryStage;
+    private ResourceBundle b;
 
-    /** Recibe el contexto de Spring arrancado en el splash */
+    /**
+     * Recibe el contexto de Spring arrancado en el splash
+     */
     public LoginWindow(ConfigurableApplicationContext ctx) {
         this.springCtx = ctx;
     }
 
+    public static void main(String[] args) {
+        // Para ejecutar standalone si se desea
+        SpringApplication.run(LoginWindow.class, args);
+    }
+
     @Override
     public void start(Stage stage) {
+        Locale locale = Locale.ENGLISH;
+        this.b = ResourceBundle.getBundle("i18n/messages", locale);
+
         this.primaryStage = stage;
-        stage.setTitle("Login - Anontalk");
+        stage.setTitle(b.getString("login.button.login") + " - " + b.getString("login.appName"));
         stage.setOnCloseRequest(e -> {
             springCtx.close();
             Platform.exit();
             System.exit(0);
         });
 
-        // --- Construcción de la UI (igual que antes) ---
-        Label lblTitle = new Label("ANONTALK");
+        // --- Construcción de la UI ---
+        Label lblTitle = new Label(b.getString("login.appName"));
         lblTitle.getStyleClass().add("welcome-label");
         GridPane.setHalignment(lblTitle, HPos.CENTER);
 
         TextField txtUser = new TextField();
-        txtUser.setPromptText("Usuario");
+        txtUser.setPromptText(b.getString("login.label.user"));
         PasswordField txtPwd = new PasswordField();
-        txtPwd.setPromptText("Contraseña");
+        txtPwd.setPromptText(b.getString("login.label.password"));
         TextField txtEmail = new TextField();
-        txtEmail.setPromptText("Email");
+        txtEmail.setPromptText(b.getString("login.label.email"));
 
-        Button btnLogin = new Button("Iniciar Sesión");
-        Button btnReg   = new Button("Registrarse");
-        Hyperlink lnkForgot = new Hyperlink("¿Has olvidado tu contraseña?");
+        Button btnLogin = new Button(b.getString("login.button.login"));
+        Button btnReg = new Button(b.getString("login.button.register"));
+        Hyperlink lnkForgot = new Hyperlink(b.getString("login.link.forgot"));
 
         btnLogin.setOnAction(e -> login(txtUser.getText().trim(), txtPwd.getText().trim()));
         btnReg.setOnAction(e -> register(txtUser.getText().trim(), txtPwd.getText().trim(), txtEmail.getText().trim()));
@@ -101,13 +102,17 @@ public class LoginWindow extends Application {
         grid.setVgap(15);
         grid.setPadding(new Insets(30));
         grid.setMaxWidth(300);
+
         grid.add(lblTitle, 0, 0, 2, 1);
         GridPane.setMargin(lblTitle, new Insets(0, 0, 20, 0));
-        grid.add(new Label("Usuario:"), 0, 1);
+
+        grid.add(new Label(b.getString("login.label.user") + ":"), 0, 1);
         grid.add(txtUser, 1, 1);
-        grid.add(new Label("Contraseña:"), 0, 2);
+
+        grid.add(new Label(b.getString("login.label.password") + ":"), 0, 2);
         grid.add(txtPwd, 1, 2);
-        grid.add(new Label("Email:"), 0, 3);
+
+        grid.add(new Label(b.getString("login.label.email") + ":"), 0, 3);
         grid.add(txtEmail, 1, 3);
 
         HBox buttonBox = new HBox(10, btnLogin, btnReg);
@@ -128,13 +133,13 @@ public class LoginWindow extends Application {
 
     private void forgotPasswordDialog() {
         TextInputDialog dlg = new TextInputDialog();
-        dlg.setTitle("Recuperar contraseña");
-        dlg.setHeaderText("Introduce el correo asociado a tu cuenta:");
-        dlg.setContentText("Email:");
+        dlg.setTitle(b.getString("login.dialog.forgot.title"));
+        dlg.setHeaderText(b.getString("login.dialog.forgot.header"));
+        dlg.setContentText(b.getString("login.dialog.forgot.content"));
 
         dlg.showAndWait().ifPresent(email -> {
             if (email.isBlank()) {
-                pop.mostrarAlertaError("Error", "El email no puede estar vacío.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.emptyEmail"));
                 return;
             }
             try {
@@ -144,33 +149,37 @@ public class LoginWindow extends Application {
                 http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> Platform.runLater(() -> {
                     switch (resp.statusCode()) {
                         case 200 ->
-                                pop.mostrarAlertaInformativa("Email enviado", "Revisa tu bandeja en " + email.trim() + " para recuperar tu contraseña.");
+                                pop.mostrarAlertaInformativa(b.getString("common.info"), MessageFormat.format(b.getString("login.alert.info.emailSent"), email.trim()));
                         case 404 ->
-                                pop.mostrarAlertaError("Email no registrado", "No existe cuenta asociada a " + email.trim());
+                                pop.mostrarAlertaError(b.getString("common.error"), MessageFormat.format(b.getString("login.alert.error.emailNotRegistered"), email.trim()));
                         default ->
-                                pop.mostrarAlertaError("Error", "No se pudo solicitar la recuperación. Intenta más tarde.");
+                                pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.requestFailed"));
                     }
                 }));
             } catch (Exception ex) {
-                pop.mostrarAlertaError("Error", "Falló la solicitud de recuperación.");
+                pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.requestFailedNetwork"));
             }
         });
     }
 
-
     private void register(String user, String pwd, String email) {
         if (user.isBlank() || pwd.isBlank() || email.isBlank()) {
-            pop.mostrarAlertaError("Error", "Completa todos los campos.");
+            pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.fillFields"));
             return;
         }
         try {
             JsonNode body = mapper.createObjectNode().put("username", user).put("password", pwd).put("email", email);
+
             HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/register")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
 
             http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> Platform.runLater(() -> {
-                if (resp.statusCode() == 200) pop.mostrarAlertaInformativa("Éxito", "Usuario registrado.");
-                else if (resp.statusCode() == 409) pop.mostrarAlertaError("Error", "Usuario o email ya registrado.");
-                else pop.mostrarAlertaError("Error", "Registro fallido.");
+                if (resp.statusCode() == 200) {
+                    pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("login.alert.info.userRegistered"));
+                } else if (resp.statusCode() == 409) {
+                    pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.userOrEmailExists"));
+                } else {
+                    pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.registerFailed"));
+                }
             }));
         } catch (Exception ignored) {
         }
@@ -178,18 +187,19 @@ public class LoginWindow extends Application {
 
     private void login(String user, String pwd) {
         if (user.isBlank() || pwd.isBlank()) {
-            pop.mostrarAlertaError("Error", "Completa todos los campos.");
+            pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.fillFields"));
             return;
         }
         try {
             JsonNode body = mapper.createObjectNode().put("username", user).put("password", pwd);
+
             HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/login")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
 
             http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
                 if (resp.statusCode() == 200) {
                     handleLoginSuccess(resp.body(), user, pwd);
                 } else {
-                    Platform.runLater(() -> pop.mostrarAlertaError("Error", "Usuario o contraseña incorrectos."));
+                    Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.invalidCredentials")));
                 }
             });
         } catch (Exception ignored) {
@@ -215,53 +225,45 @@ public class LoginWindow extends Application {
                 Platform.runLater(() -> showForceChangeDialog(user, pwd));
             } else {
                 Platform.runLater(() -> {
-                    pop.mostrarAlertaInformativa("Éxito", "Bienvenido, " + user);
+                    pop.mostrarAlertaInformativa(b.getString("common.success"), MessageFormat.format(b.getString("login.alert.info.welcome"), user));
                     primaryStage.close();
                     try {
-                        // ← Aquí pasamos springCtx al constructor de MainInboxWindow
                         new MainInboxWindow(user, springCtx).start(new Stage());
                     } catch (Exception ignore) {
                     }
                 });
             }
         } catch (Exception ex) {
-            Platform.runLater(() -> pop.mostrarAlertaError("Error", "No se pudo procesar la respuesta del servidor."));
+            Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.serverResponse")));
         }
     }
 
-
-    /**
-     * Diálogo modal que pide nueva contraseña y la envía al endpoint change-password
-     */
     private void showForceChangeDialog(String username, String token) {
         Dialog<Pair<String, String>> dlg = new Dialog<>();
-        dlg.setTitle("Cambiar contraseña temporal");
-        dlg.setHeaderText("Has iniciado con un token. Por seguridad, elige una nueva contraseña.");
+        dlg.setTitle(b.getString("login.dialog.forceChange.title"));
+        dlg.setHeaderText(b.getString("login.dialog.forceChange.header"));
 
-        // campos
         PasswordField txtNew = new PasswordField();
-        txtNew.setPromptText("Nueva contraseña");
+        txtNew.setPromptText(b.getString("login.dialog.forceChange.prompt.new"));
         PasswordField txtConfirm = new PasswordField();
-        txtConfirm.setPromptText("Repetir contraseña");
+        txtConfirm.setPromptText(b.getString("login.dialog.forceChange.prompt.confirm"));
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.add(new Label("Nueva:"), 0, 0);
+        grid.add(new Label(b.getString("login.dialog.forceChange.label.new")), 0, 0);
         grid.add(txtNew, 1, 0);
-        grid.add(new Label("Repetir:"), 0, 1);
+        grid.add(new Label(b.getString("login.dialog.forceChange.label.confirm")), 0, 1);
         grid.add(txtConfirm, 1, 1);
         dlg.getDialogPane().setContent(grid);
 
-        ButtonType btnSave = new ButtonType("Guardar", ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnSave = new ButtonType(b.getString("login.dialog.forceChange.button.save"), ButtonBar.ButtonData.OK_DONE);
         dlg.getDialogPane().getButtonTypes().addAll(btnSave, ButtonType.CANCEL);
 
-        // validación inline
         Node saveButton = dlg.getDialogPane().lookupButton(btnSave);
         saveButton.setDisable(true);
-        txtNew.textProperty().addListener((observable, oldValue, newValue) -> saveButton.setDisable(newValue.isBlank() || !newValue.equals(txtConfirm.getText())));
-
-        txtConfirm.textProperty().addListener((observable, oldValue, newValue) -> saveButton.setDisable(newValue.isBlank() || !newValue.equals(txtNew.getText())));
+        txtNew.textProperty().addListener((o, old, ne) -> saveButton.setDisable(ne.isBlank() || !ne.equals(txtConfirm.getText())));
+        txtConfirm.textProperty().addListener((o, old, ne) -> saveButton.setDisable(ne.isBlank() || !ne.equals(txtNew.getText())));
 
         dlg.setResultConverter(bt -> {
             if (bt == btnSave) return new Pair<>(txtNew.getText(), txtConfirm.getText());
@@ -270,20 +272,19 @@ public class LoginWindow extends Application {
 
         dlg.showAndWait().ifPresent(pair -> {
             String newPwd = pair.getKey();
-            // Llamada async a change-password
             ObjectNode body = mapper.createObjectNode().put("username", username).put("oldPassword", token).put("newPassword", newPwd);
             HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/change-password")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
+
             http.sendAsync(req, HttpResponse.BodyHandlers.discarding()).thenAccept(resp -> Platform.runLater(() -> {
                 if (resp.statusCode() == 200) {
-                    pop.mostrarAlertaInformativa("Éxito", "Contraseña actualizada.");
-                    // abrir bandeja
+                    pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("login.alert.info.passwordUpdated"));
                     primaryStage.close();
                     try {
                         new MainInboxWindow(username, springCtx).start(new Stage());
                     } catch (Exception ignore) {
                     }
                 } else {
-                    pop.mostrarAlertaError("Error", "No se pudo cambiar la contraseña.");
+                    pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.passwordUpdateFailed"));
                 }
             }));
         });
@@ -293,8 +294,8 @@ public class LoginWindow extends Application {
         try {
             PBEKeySpec spec = new PBEKeySpec(pwd.toCharArray(), salt.getBytes(), 65_536, 256);
             SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            byte[] bytes = skf.generateSecret(spec).getEncoded();
-            return AESUtils.getKeyFromBytes(bytes);
+            byte[] keyBytes = skf.generateSecret(spec).getEncoded();
+            return AESUtils.getKeyFromBytes(keyBytes);
         } catch (InvalidKeySpecException | java.security.NoSuchAlgorithmException ex) {
             throw new RuntimeException("PBKDF2 failure", ex);
         }

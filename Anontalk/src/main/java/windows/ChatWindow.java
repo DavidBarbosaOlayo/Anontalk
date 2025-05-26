@@ -24,7 +24,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.PublicKey;
+import java.text.MessageFormat;
 import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
 public class ChatWindow {
 
@@ -36,21 +39,23 @@ public class ChatWindow {
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule()).disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
+    private final ResourceBundle b;
+
     public ChatWindow(String currentUser, Mensaje mensaje) {
         this.currentUser = currentUser;
         this.mensaje = mensaje;
+        // Cargamos bundle según la locale actual
+        this.b = ResourceBundle.getBundle("i18n/messages", Locale.ENGLISH);
     }
 
     public void show() {
         Stage chatStage = new Stage();
-        chatStage.setTitle("Chat con " + mensaje.getSender());
+        // Título con formato
+        chatStage.setTitle(MessageFormat.format(b.getString("chat.window.title"), mensaje.getSender()));
 
         /* ---------- CABECERA ---------- */
-        Label lblHeader = new Label(
-                "De: " + mensaje.getSender() +
-                        "  |  Asunto: " + mensaje.getAsunto() +
-                        "  |  Fecha: " + LocalDateTime.now()
-        );
+        String headerText = b.getString("chat.header.from") + " " + mensaje.getSender() + "  |  " + b.getString("chat.header.subject") + " " + mensaje.getAsunto() + "  |  " + b.getString("chat.header.date") + " " + LocalDateTime.now();
+        Label lblHeader = new Label(headerText);
         lblHeader.getStyleClass().add("chat-header");
 
         /* ---------- CUERPO RECIBIDO ---------- */
@@ -62,28 +67,31 @@ public class ChatWindow {
 
         /* ---------- REDACTAR RESPUESTA ---------- */
         TextArea txtReply = new TextArea();
-        txtReply.setPromptText("Redacta tu respuesta…");
+        txtReply.setPromptText(b.getString("chat.prompt.reply"));
         txtReply.setPrefRowCount(4);
         txtReply.getStyleClass().add("chat-textarea");
-        Button btnBold = new Button("B");
+
+        Button btnBold = new Button(b.getString("chat.button.bold"));
         btnBold.setOnAction(e -> txtReply.appendText(" **texto en negrita** "));
         HBox toolbar = new HBox(10, btnBold);
         toolbar.setAlignment(Pos.CENTER_LEFT);
+
         VBox compose = new VBox(5, toolbar, txtReply);
         compose.setPadding(new Insets(10));
 
         /* ---------- BOTONES ---------- */
-        Button btnEnviar = new Button("Enviar");
-        Button btnCerrar = new Button("Cerrar");
+        Button btnEnviar = new Button(b.getString("chat.button.send"));
+        Button btnCerrar = new Button(b.getString("chat.button.close"));
         btnEnviar.setOnAction(e -> sendReply(txtReply.getText().trim(), chatStage));
         btnCerrar.setOnAction(e -> chatStage.close());
+
         HBox bar = new HBox(10, btnEnviar, btnCerrar);
         bar.setAlignment(Pos.CENTER_RIGHT);
         bar.setPadding(new Insets(10));
 
         /* ---------- LAYOUT RAÍZ ---------- */
         BorderPane root = new BorderPane();
-        root.getStyleClass().add("chat-root");          // ← añadimos esta clase
+        root.getStyleClass().add("chat-root");
         root.setTop(lblHeader);
         root.setCenter(scroll);
         root.setBottom(new VBox(compose, bar));
@@ -93,9 +101,7 @@ public class ChatWindow {
         Scene scene = new Scene(root, 800, 600);
         ThemeManager tm = ThemeManager.getInstance();
         scene.getStylesheets().setAll(tm.getCss());
-        tm.themeProperty().addListener((obs, oldT, newT) -> {
-            scene.getStylesheets().setAll(tm.getCss());
-        });
+        tm.themeProperty().addListener((obs, oldT, newT) -> scene.getStylesheets().setAll(tm.getCss()));
 
         chatStage.setScene(scene);
         chatStage.show();
@@ -107,7 +113,7 @@ public class ChatWindow {
 
     private void sendReply(String plainText, Stage chatStage) {
         if (plainText.isEmpty()) {
-            pop.mostrarAlertaError("Error", "No puedes enviar un mensaje vacío.");
+            pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.emptyMessage"));
             return;
         }
         String destinatario = mensaje.getSender();
@@ -141,20 +147,19 @@ public class ChatWindow {
                         MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
                         Platform.runLater(() -> {
                             MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));
-
-                            pop.mostrarAlertaInformativa("Mensaje enviado", "Tu respuesta ha sido enviada.");
+                            pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.alert.info.sent"));
                             chatStage.close();
                         });
                     } catch (Exception ex) {
-                        Platform.runLater(() -> pop.mostrarAlertaError("Error", "No se pudo procesar la respuesta del servidor."));
+                        Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.serverResponse")));
                     }
                 } else {
-                    Platform.runLater(() -> pop.mostrarAlertaError("Error", "No se pudo guardar el mensaje en el servidor."));
+                    Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.save")));
                 }
             });
 
         } catch (Exception ex) {
-            pop.mostrarAlertaError("Error", "Falló el cifrado o la conexión.");
+            pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.encrypt"));
         }
     }
 }
