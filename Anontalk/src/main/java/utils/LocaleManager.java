@@ -4,23 +4,31 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 
 import java.util.Locale;
+import java.util.ResourceBundle;
 
-public class LocaleManager {
-    private static final ObjectProperty<Locale> localeProperty =
-            new SimpleObjectProperty<>(Locale.getDefault());
+public final class LocaleManager {
 
-    /** Propiedad observable que puedes suscribir en cualquier ventana */
+    private static final String BUNDLE_BASE = "i18n/messages";
+    private static final ObjectProperty<Locale> locale = new SimpleObjectProperty<>(Locale.getDefault());
+
+    private LocaleManager() {
+    }
+
+    /* -------- API pública -------- */
     public static ObjectProperty<Locale> localeProperty() {
-        return localeProperty;
+        return locale;
     }
 
-    /** Llama a este método para cambiar el idioma en toda la app */
-    public static void setLocale(Locale locale) {
-        localeProperty.set(locale);
-    }
-
-    /** Para obtener el locale actual */
     public static Locale getLocale() {
-        return localeProperty.get();
+        return locale.get();
+    }
+
+
+    public static void setLocale(Locale newLocale) {
+        locale.set(newLocale);
+    }
+
+    public static ResourceBundle bundle() {
+        return ResourceBundle.getBundle(BUNDLE_BASE, getLocale());
     }
 }

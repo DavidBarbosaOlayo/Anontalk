@@ -18,6 +18,7 @@ import managers.mensajes.MensajeDTO;
 import managers.mensajes.MessageStore;
 import security.encryption.HybridCrypto;
 import security.encryption.RSAUtils;
+import utils.LocaleManager;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -26,36 +27,45 @@ import java.net.http.HttpResponse;
 import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
-import java.util.Locale;
 import java.util.ResourceBundle;
 
+/**
+ * Ventana de conversación (lectura + respuesta) con cambio de idioma en caliente.
+ */
 public class ChatWindow {
 
-    /* -------- estado -------- */
+    /* ======= dependencias / estado ======= */
     private final String currentUser;
-    private final Mensaje mensaje;          // mensaje “recibido” que se muestra arriba
+    private final Mensaje mensaje;          // mensaje que abrimos
     private final PopUpInfo pop = new PopUpInfo();
 
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule()).disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-    private final ResourceBundle b;
+    /* ======= nodos que cambian con el idioma ======= */
+    private Stage stage;
+    private Label lblHeader;
+    private TextArea txtReply;
+    private Button btnBold;
+    private Button btnEnviar;
+    private Button btnCerrar;
+
+    /* ------------------------------------------------------------------------------------ */
 
     public ChatWindow(String currentUser, Mensaje mensaje) {
         this.currentUser = currentUser;
         this.mensaje = mensaje;
-        // Cargamos bundle según la locale actual
-        this.b = ResourceBundle.getBundle("i18n/messages", Locale.ENGLISH);
     }
 
+    /* ==================================================================================== */
+    /*                                          UI                                          */
+    /* ==================================================================================== */
+
     public void show() {
-        Stage chatStage = new Stage();
-        // Título con formato
-        chatStage.setTitle(MessageFormat.format(b.getString("chat.window.title"), mensaje.getSender()));
+        stage = new Stage();
 
         /* ---------- CABECERA ---------- */
-        String headerText = b.getString("chat.header.from") + " " + mensaje.getSender() + "  |  " + b.getString("chat.header.subject") + " " + mensaje.getAsunto() + "  |  " + b.getString("chat.header.date") + " " + LocalDateTime.now();
-        Label lblHeader = new Label(headerText);
+        lblHeader = new Label();
         lblHeader.getStyleClass().add("chat-header");
 
         /* ---------- CUERPO RECIBIDO ---------- */
@@ -65,53 +75,76 @@ public class ChatWindow {
         ScrollPane scroll = new ScrollPane(lblBody);
         scroll.setFitToWidth(true);
 
-        /* ---------- REDACTAR RESPUESTA ---------- */
-        TextArea txtReply = new TextArea();
-        txtReply.setPromptText(b.getString("chat.prompt.reply"));
+        /* ---------- REDACTOR ---------- */
+        txtReply = new TextArea();
         txtReply.setPrefRowCount(4);
         txtReply.getStyleClass().add("chat-textarea");
 
-        Button btnBold = new Button(b.getString("chat.button.bold"));
+        btnBold = new Button();
         btnBold.setOnAction(e -> txtReply.appendText(" **texto en negrita** "));
+
         HBox toolbar = new HBox(10, btnBold);
         toolbar.setAlignment(Pos.CENTER_LEFT);
 
         VBox compose = new VBox(5, toolbar, txtReply);
         compose.setPadding(new Insets(10));
 
-        /* ---------- BOTONES ---------- */
-        Button btnEnviar = new Button(b.getString("chat.button.send"));
-        Button btnCerrar = new Button(b.getString("chat.button.close"));
-        btnEnviar.setOnAction(e -> sendReply(txtReply.getText().trim(), chatStage));
-        btnCerrar.setOnAction(e -> chatStage.close());
+        /* ---------- BOTONERA ---------- */
+        btnEnviar = new Button();
+        btnCerrar = new Button();
+        btnEnviar.setOnAction(e -> sendReply(txtReply.getText().trim()));
+        btnCerrar.setOnAction(e -> stage.close());
 
         HBox bar = new HBox(10, btnEnviar, btnCerrar);
         bar.setAlignment(Pos.CENTER_RIGHT);
         bar.setPadding(new Insets(10));
 
-        /* ---------- LAYOUT RAÍZ ---------- */
-        BorderPane root = new BorderPane();
-        root.getStyleClass().add("chat-root");
+        /* ---------- ROOT ---------- */
+        BorderPane root = new BorderPane(scroll);
         root.setTop(lblHeader);
-        root.setCenter(scroll);
         root.setBottom(new VBox(compose, bar));
         root.setPadding(new Insets(10));
+        root.getStyleClass().add("chat-root");
 
-        /* ---------- ESCENA Y GESTIÓN DE TEMA ---------- */
+        /* ---------- SCENE ---------- */
         Scene scene = new Scene(root, 800, 600);
         ThemeManager tm = ThemeManager.getInstance();
         scene.getStylesheets().setAll(tm.getCss());
-        tm.themeProperty().addListener((obs, oldT, newT) -> scene.getStylesheets().setAll(tm.getCss()));
+        tm.themeProperty().addListener((o, oldT, newT) -> scene.getStylesheets().setAll(tm.getCss()));
 
-        chatStage.setScene(scene);
-        chatStage.show();
+        /* ---------- Idioma dinámico ---------- */
+        LocaleManager.localeProperty().addListener((o, oldL, newL) -> refreshTexts());
+        refreshTexts();          // primera vez
+
+        stage.setScene(scene);
+        stage.show();
     }
 
-    /* =========================================================== */
-    /* ===================  LÓGICA DE ENVÍO  ===================== */
-    /* =========================================================== */
+    /* ==================================================================================== */
+    /*                                  REFRESCO DE TEXTOS                                  */
+    /* ==================================================================================== */
 
-    private void sendReply(String plainText, Stage chatStage) {
+    private void refreshTexts() {
+        ResourceBundle b = LocaleManager.bundle();
+
+        stage.setTitle(MessageFormat.format(b.getString("chat.window.title"), mensaje.getSender()));
+
+        lblHeader.setText(b.getString("chat.header.from") + " " + mensaje.getSender() + "  |  " + b.getString("chat.header.subject") + " " + mensaje.getAsunto() + "  |  " + b.getString("chat.header.date") + " " + LocalDateTime.now());
+
+        txtReply.setPromptText(b.getString("chat.prompt.reply"));
+
+        btnBold.setText(b.getString("chat.button.bold"));
+        btnEnviar.setText(b.getString("chat.button.send"));
+        btnCerrar.setText(b.getString("chat.button.close"));
+    }
+
+    /* ==================================================================================== */
+    /*                                    ENVÍO RESPUESTA                                   */
+    /* ==================================================================================== */
+
+    private void sendReply(String plainText) {
+        ResourceBundle b = LocaleManager.bundle();
+
         if (plainText.isEmpty()) {
             pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.emptyMessage"));
             return;
@@ -119,15 +152,15 @@ public class ChatWindow {
         String destinatario = mensaje.getSender();
 
         try {
-            /* obtener clave pública del destinatario */
+            /* clave pública destinatario */
             HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + destinatario + "/publicKey")).GET().build();
             String pubB64 = http.send(pkReq, HttpResponse.BodyHandlers.ofString()).body();
             PublicKey destPk = RSAUtils.publicKeyFromBase64(pubB64);
 
-            /* cifrar híbrido */
+            /* cifrado híbrido */
             HybridCrypto.HybridPayload p = HybridCrypto.encrypt(plainText, destPk);
 
-            /* construir DTO */
+            /* DTO */
             MensajeDTO dto = new MensajeDTO();
             dto.setRemitente(currentUser);
             dto.setDestinatario(destinatario);
@@ -148,7 +181,7 @@ public class ChatWindow {
                         Platform.runLater(() -> {
                             MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));
                             pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.alert.info.sent"));
-                            chatStage.close();
+                            stage.close();
                         });
                     } catch (Exception ex) {
                         Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.serverResponse")));
