@@ -193,3 +193,18 @@
     -fx-min-height: 0;
 }
 
+.tool-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 4 0 0;
+}
+/* chat.css */
+.tool-toggle {
+  -fx-background-color: transparent;
+  -fx-padding: 0;
+}
+.tool-toggle:selected {
+  -fx-image: url("/cifrado1.png");
+}
+.tool-toggle:hover {
+  -fx-opacity: .85;
+}

@@ -2,7 +2,6 @@ package windows;
 
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.beans.property.StringProperty;
 
 public class ThemeManager {
     private static final ThemeManager INSTANCE = new ThemeManager();
@@ -31,8 +30,8 @@ public class ThemeManager {
     /** Devuelve la URL de la hoja de estilos actual */
     public String getCss() {
         String css = theme.get().equals("dark")
-                ? "/tema2.css"   // dark
-                : "/temas.css";  // light
+                ? "/temas/tema2.css"   // dark
+                : "/temas/temas.css";  // light
         return getClass().getResource(css).toExternalForm();
     }
 }

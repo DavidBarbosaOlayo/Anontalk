@@ -14,6 +14,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.util.Objects;
 import java.util.function.Consumer;
 
 public class SplashWindow {
@@ -28,7 +29,7 @@ public class SplashWindow {
         splashStage = new Stage(StageStyle.UNDECORATED);
 
         // 1. Carga el logo desde resources (src/main/resources/logo.png)
-        Image logo = new Image(getClass().getResourceAsStream("/logo.png"));
+        Image logo = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/logo.png")));
         ImageView logoView = new ImageView(logo);
         logoView.setFitWidth(100);        // ancho deseado
         logoView.setPreserveRatio(true);  // mantiene la proporción original

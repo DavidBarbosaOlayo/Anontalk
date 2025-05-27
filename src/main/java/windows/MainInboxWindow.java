@@ -65,16 +65,16 @@ public class MainInboxWindow extends Application {
     private TabPane tabs;
 
     /* ======= iconos ======= */
-    private final Image userIconLight     = new Image(getClass().getResourceAsStream("/user.png"),     30, 30, true, true);
-    private final Image userIconDark      = new Image(getClass().getResourceAsStream("/user2.png"),    30, 30, true, true);
-    private final Image trashIconLight    = new Image(getClass().getResourceAsStream("/papelera.png"), 16, 16, true, true);
-    private final Image trashIconDark     = new Image(getClass().getResourceAsStream("/papelera2.png"),16, 16, true, true);
-    private final Image settingsIconLight = new Image(getClass().getResourceAsStream("/ajustes.png"),  30, 30, true, true);
-    private final Image settingsIconDark  = new Image(getClass().getResourceAsStream("/ajustes2.png"), 30, 30, true, true);
-    private final Image newMsgIconLight   = new Image(getClass().getResourceAsStream("/newM.png"),     30, 30, true, true);
-    private final Image newMsgIconDark    = new Image(getClass().getResourceAsStream("/newM2.png"),    30, 30, true, true);
-    private final Image logoutIconLight   = new Image(getClass().getResourceAsStream("/logOut.png"),   30, 28, true, true);
-    private final Image logoutIconDark    = new Image(getClass().getResourceAsStream("/logOut2.png"),  30, 28, true, true);
+    private final Image userIconLight     = new Image(getClass().getResourceAsStream("/assets/user.png"),     30, 30, true, true);
+    private final Image userIconDark      = new Image(getClass().getResourceAsStream("/assets/user2.png"),    30, 30, true, true);
+    private final Image trashIconLight    = new Image(getClass().getResourceAsStream("/assets/papelera.png"), 16, 16, true, true);
+    private final Image trashIconDark     = new Image(getClass().getResourceAsStream("/assets/papelera2.png"),16, 16, true, true);
+    private final Image settingsIconLight = new Image(getClass().getResourceAsStream("/assets/ajustes.png"),  30, 30, true, true);
+    private final Image settingsIconDark  = new Image(getClass().getResourceAsStream("/assets/ajustes2.png"), 30, 30, true, true);
+    private final Image newMsgIconLight   = new Image(getClass().getResourceAsStream("/assets/newM.png"),     30, 30, true, true);
+    private final Image newMsgIconDark    = new Image(getClass().getResourceAsStream("/assets/newM2.png"),    30, 30, true, true);
+    private final Image logoutIconLight   = new Image(getClass().getResourceAsStream("/assets/logOut.png"),   30, 28, true, true);
+    private final Image logoutIconDark    = new Image(getClass().getResourceAsStream("/assets/logOut2.png"),  30, 28, true, true);
 
     private ImageView profileIconView;
     private ImageView settingsIconView;

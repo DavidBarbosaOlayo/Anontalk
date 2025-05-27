@@ -4,13 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import javafx.application.Platform;
+import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import managers.PopUpInfo;
 import managers.mensajes.Mensaje;
@@ -27,120 +28,187 @@ import java.net.http.HttpResponse;
 import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
-/**
- * Ventana de conversación (lectura + respuesta) con cambio de idioma en caliente.
- */
 public class ChatWindow {
 
-    /* ======= dependencias / estado ======= */
+    /* ---------------- inyección ---------------- */
     private final String currentUser;
-    private final Mensaje mensaje;          // mensaje que abrimos
+    private final Mensaje mensaje;
     private final PopUpInfo pop = new PopUpInfo();
 
+    /* ---------------- servicios ---------------- */
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule()).disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-    /* ======= nodos que cambian con el idioma ======= */
+    /* ---------------- UI dinámico ---------------- */
     private Stage stage;
-    private Label lblHeader;
+    private Label lblSender, lblSubject, lblDate;
     private TextArea txtReply;
-    private Button btnBold;
-    private Button btnEnviar;
-    private Button btnCerrar;
+    private Label lblEncryptState;
+    private MenuButton mbTimer;
+    private Button btnEncrypt, btnAttach, btnSend, btnClose;
 
-    /* ------------------------------------------------------------------------------------ */
+    /* ---------------- iconos ---------------- */
+    private final Image icoEncrypt = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifrado.png")), 36, 36, true, true);
+    private final Image icoTimer = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/timer.png")), 36, 36, true, true);
+    private final Image icoAttach = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/añadir.png")), 36, 36, true, true);
+    private final Image icoEncryptOn = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifrado1.png")), 36, 36, true, true);
+    private final Image icoTimerOn = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/timer1.png")), 36, 36, true, true);
+
+
+    /* =================================================================================== */
 
     public ChatWindow(String currentUser, Mensaje mensaje) {
         this.currentUser = currentUser;
         this.mensaje = mensaje;
     }
 
-    /* ==================================================================================== */
-    /*                                          UI                                          */
-    /* ==================================================================================== */
-
+    /* =================================================================================== */
+    /*                                        UI                                          */
+    /* =================================================================================== */
     public void show() {
         stage = new Stage();
 
-        /* ---------- CABECERA ---------- */
-        lblHeader = new Label();
-        lblHeader.getStyleClass().add("chat-header");
+        /* ───────── CABECERA ───────── */
+        lblSender = new Label();
+        lblSubject = new Label();
+        lblDate = new Label();
+        lblSender.getStyleClass().add("chat-header-line");
+        lblSubject.getStyleClass().add("chat-header-line");
+        lblDate.getStyleClass().add("chat-header-date");
 
-        /* ---------- CUERPO RECIBIDO ---------- */
+        VBox leftHeader = new VBox(2, lblSender, lblSubject);
+        Region spacerH = new Region();
+        HBox.setHgrow(spacerH, Priority.ALWAYS);
+        HBox headerBox = new HBox(leftHeader, spacerH, lblDate);
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        headerBox.setPadding(new Insets(0, 0, 10, 0));
+
+        /* ───────── MENSAJE RECIBIDO ───────── */
         Label lblBody = new Label(mensaje.getContent());
         lblBody.setWrapText(true);
         lblBody.getStyleClass().add("chat-message-body");
         ScrollPane scroll = new ScrollPane(lblBody);
         scroll.setFitToWidth(true);
 
-        /* ---------- REDACTOR ---------- */
+        /* ───────── ICONOS / HERRAMIENTAS ───────── */
+        // — cifrado
+        btnEncrypt = new Button(null, new ImageView(icoEncrypt));
+        btnEncrypt.getStyleClass().add("icon-button");
+        lblEncryptState = new Label("Sin cifrar");
+        lblEncryptState.getStyleClass().add("tool-label");
+        btnEncrypt.setOnAction(e -> {
+            boolean on = "Sin cifrar".equals(lblEncryptState.getText());
+            ((ImageView) btnEncrypt.getGraphic()).setImage(on ? icoEncryptOn : icoEncrypt);
+            lblEncryptState.setText(on ? "Cifrado" : "Sin cifrar");
+        });
+
+        // — temporizador
+        mbTimer = new MenuButton(null, new ImageView(icoTimer));
+        mbTimer.getStyleClass().add("icon-button");
+        Label lblTimerState = new Label();
+        lblTimerState.getStyleClass().add("tool-label");
+
+        for (String o : new String[]{"Sin tiempo", "30 s", "1 min", "5 min", "30 min"}) {
+            MenuItem it = new MenuItem(o);
+            it.setOnAction(ev -> {
+                if ("Sin tiempo".equals(o)) {
+                    lblTimerState.setText("");
+                    ((ImageView) mbTimer.getGraphic()).setImage(icoTimer);
+                } else {
+                    lblTimerState.setText(o);
+                    ((ImageView) mbTimer.getGraphic()).setImage(icoTimerOn);
+                }
+            });
+            mbTimer.getItems().add(it);
+        }
+
+        // — adjuntar
+        btnAttach = new Button(null, new ImageView(icoAttach));
+        btnAttach.getStyleClass().add("icon-button");
+
+        /* GridPane 2×3 para iconos centrados */
+        GridPane tools = new GridPane();
+        tools.setHgap(14);
+        tools.setVgap(2);
+        tools.setAlignment(Pos.TOP_LEFT);
+        for (int i = 0; i < 3; i++) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setHalignment(HPos.CENTER);
+            tools.getColumnConstraints().add(cc);
+        }
+
+        tools.add(btnEncrypt, 0, 0);
+        tools.add(mbTimer, 1, 0);
+        tools.add(btnAttach, 2, 0);
+        tools.add(lblEncryptState, 0, 1);
+        tools.add(lblTimerState, 1, 1);
+
+        /* ───────── REDACTOR ───────── */
         txtReply = new TextArea();
         txtReply.setPrefRowCount(4);
         txtReply.getStyleClass().add("chat-textarea");
 
-        btnBold = new Button();
-        btnBold.setOnAction(e -> txtReply.appendText(" **texto en negrita** "));
-
-        HBox toolbar = new HBox(10, btnBold);
-        toolbar.setAlignment(Pos.CENTER_LEFT);
-
-        VBox compose = new VBox(5, toolbar, txtReply);
+        VBox compose = new VBox(6, txtReply);   // solo el área de texto
         compose.setPadding(new Insets(10));
 
-        /* ---------- BOTONERA ---------- */
-        btnEnviar = new Button();
-        btnCerrar = new Button();
-        btnEnviar.setOnAction(e -> sendReply(txtReply.getText().trim()));
-        btnCerrar.setOnAction(e -> stage.close());
+        /* ───────── BOTONES INFERIORES + ICONOS ───────── */
+        btnSend = new Button();
+        btnClose = new Button();
+        btnSend.setOnAction(e -> sendReply(txtReply.getText().trim()));
+        btnClose.setOnAction(e -> stage.close());
 
-        HBox bar = new HBox(10, btnEnviar, btnCerrar);
-        bar.setAlignment(Pos.CENTER_RIGHT);
-        bar.setPadding(new Insets(10));
+        Region stretch = new Region();
+        HBox.setHgrow(stretch, Priority.ALWAYS);
 
-        /* ---------- ROOT ---------- */
-        BorderPane root = new BorderPane(scroll);
-        root.setTop(lblHeader);
-        root.setBottom(new VBox(compose, bar));
+        HBox bottomBar = new HBox(10, tools, stretch, btnSend, btnClose);
+        bottomBar.setAlignment(Pos.CENTER_LEFT);      // iconos a la izquierda, botones a la derecha
+        bottomBar.setPadding(new Insets(10, 10, 10, 10));
+
+        /* ───────── ROOT / ESCENA ───────── */
+        BorderPane root = new BorderPane(scroll, headerBox, null, new VBox(compose, bottomBar), null);
         root.setPadding(new Insets(10));
         root.getStyleClass().add("chat-root");
 
-        /* ---------- SCENE ---------- */
-        Scene scene = new Scene(root, 800, 600);
+        Scene scene = new Scene(root, 700, 500);
         ThemeManager tm = ThemeManager.getInstance();
         scene.getStylesheets().setAll(tm.getCss());
-        tm.themeProperty().addListener((o, oldT, newT) -> scene.getStylesheets().setAll(tm.getCss()));
+        tm.themeProperty().addListener((o, oldT, n) -> scene.getStylesheets().setAll(tm.getCss()));
 
-        /* ---------- Idioma dinámico ---------- */
-        LocaleManager.localeProperty().addListener((o, oldL, newL) -> refreshTexts());
-        refreshTexts();          // primera vez
+        LocaleManager.localeProperty().addListener((o, oldL, n) -> refreshTexts());
+        refreshTexts();
 
         stage.setScene(scene);
         stage.show();
     }
 
-    /* ==================================================================================== */
-    /*                                  REFRESCO DE TEXTOS                                  */
-    /* ==================================================================================== */
+    /* =================================================================================== */
+    /*                              REFRESCO DE TEXTOS                                    */
+    /* =================================================================================== */
 
     private void refreshTexts() {
         ResourceBundle b = LocaleManager.bundle();
 
         stage.setTitle(MessageFormat.format(b.getString("chat.window.title"), mensaje.getSender()));
 
-        lblHeader.setText(b.getString("chat.header.from") + " " + mensaje.getSender() + "  |  " + b.getString("chat.header.subject") + " " + mensaje.getAsunto() + "  |  " + b.getString("chat.header.date") + " " + LocalDateTime.now());
+        lblSender.setText(b.getString("chat.header.from") + mensaje.getSender());
+        lblSubject.setText(b.getString("chat.header.subject") + mensaje.getAsunto());
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+        lblDate.setText(b.getString("chat.header.date") + LocalDateTime.now().format(fmt));
 
         txtReply.setPromptText(b.getString("chat.prompt.reply"));
 
-        btnBold.setText(b.getString("chat.button.bold"));
-        btnEnviar.setText(b.getString("chat.button.send"));
-        btnCerrar.setText(b.getString("chat.button.close"));
+        btnSend.setText(b.getString("chat.button.send"));
+        btnClose.setText(b.getString("chat.button.close"));
     }
 
-    /* ==================================================================================== */
-    /*                                    ENVÍO RESPUESTA                                   */
-    /* ==================================================================================== */
+    /* =================================================================================== */
+    /*                               ENVÍO DE RESPUESTA                                   */
+    /* =================================================================================== */
 
     private void sendReply(String plainText) {
         ResourceBundle b = LocaleManager.bundle();
@@ -149,6 +217,7 @@ public class ChatWindow {
             pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.emptyMessage"));
             return;
         }
+
         String destinatario = mensaje.getSender();
 
         try {

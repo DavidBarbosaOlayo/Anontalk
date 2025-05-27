@@ -126,7 +126,7 @@ public class LoginWindow extends Application {
 
         StackPane root = new StackPane(grid);
         Scene scene = new Scene(root, 450, 420);
-        scene.getStylesheets().add(getClass().getResource("/temas.css").toExternalForm());
+        scene.getStylesheets().add(getClass().getResource("/temas/temas.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }
