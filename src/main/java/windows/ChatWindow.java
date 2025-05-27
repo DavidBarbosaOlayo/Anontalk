@@ -52,17 +52,22 @@ public class ChatWindow {
     private Label lblSubjectKey, lblSubjectValue;
     private TextArea txtReply;
     private Label lblEncryptState;
+    private Label lblTimerState;
     private MenuButton mbTimer;
-    private Button btnEncrypt, btnAttach, btnSend, btnClose;
+    private Button btnEncrypt, btnAttach, btnSend, btnClose, btnResponder;
+    private MenuItem miTimerOff;
     private boolean encrypt = false;     // SIN cifrar predeterminado
-
 
     /* ---------------- iconos ---------------- */
     private final Image icoEncrypt = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifrado.png")), 36, 36, true, true);
+    private final Image icoEncryptDark = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifradoDarkTheme.png")), 36, 36, true, true);
     private final Image icoTimer = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/timer.png")), 36, 36, true, true);
+    private final Image icoTimerDark = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/timerDarkTheme.png")), 36, 36, true, true);
     private final Image icoAttach = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/añadir.png")), 36, 36, true, true);
+    private final Image icoAttachDark = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/añadirDarkTheme.png")), 36, 36, true, true);
     private final Image icoEncryptOn = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifrado1.png")), 36, 36, true, true);
     private final Image icoTimerOn = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/timer1.png")), 36, 36, true, true);
+    private final Image icoAttachOn = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/añadir1.png")), 36, 36, true, true);
 
     /* =================================================================================== */
     public ChatWindow(String currentUser, Mensaje mensaje) {
@@ -75,6 +80,7 @@ public class ChatWindow {
     /* =================================================================================== */
     public void show() {
         stage = new Stage();
+        ResourceBundle b = LocaleManager.bundle();
 
         /* ───────── CABECERA ───────── */
         lblDateKey = new Label();
@@ -108,33 +114,38 @@ public class ChatWindow {
         ScrollPane scroll = new ScrollPane(lblBody);
         scroll.setFitToWidth(true);
 
-        /* ───────── ICONOS / HERRAMIENTAS ───────── */
+        /* ========== ÁREA DE RESPUESTA (oculta al inicio) ========== */
+
+        /* ─── ICONOS / HERRAMIENTAS ─── */
         btnEncrypt = new Button(null, new ImageView(icoEncrypt));
         btnEncrypt.getStyleClass().add("icon-button");
-        lblEncryptState = new Label("Sin cifrar");
+        lblEncryptState = new Label(b.getString("chat.encrypt.off"));
         lblEncryptState.getStyleClass().add("tool-label");
         btnEncrypt.setOnAction(e -> {
-            encrypt = !encrypt;
-            ((ImageView) btnEncrypt.getGraphic()).setImage(encrypt ? icoEncryptOn : icoEncrypt);
-            lblEncryptState.setText(encrypt ? "Cifrado" : "Sin cifrar");
+            encrypt = !encrypt;    // solo cambia estado lógico
+            lblEncryptState.setText(LocaleManager.bundle().getString(encrypt ? "chat.encrypt.on" : "chat.encrypt.off"));
+            updateIcons();         // iconos centralizados
         });
-
 
         mbTimer = new MenuButton(null, new ImageView(icoTimer));
         mbTimer.getStyleClass().add("icon-button");
-        Label lblTimerState = new Label();
+        lblTimerState = new Label();
         lblTimerState.getStyleClass().add("tool-label");
 
-        for (String o : new String[]{"Sin tiempo", "30 s", "1 min", "5 min", "30 min"}) {
+        /* opción “Sin tiempo” */
+        miTimerOff = new MenuItem(b.getString("chat.timer.off"));
+        miTimerOff.setOnAction(ev -> {
+            lblTimerState.setText("");
+            updateIcons();
+        });
+        mbTimer.getItems().add(miTimerOff);
+
+        /* resto de opciones */
+        for (String o : new String[]{"30 s", "1 min", "5 min", "30 min"}) {
             MenuItem it = new MenuItem(o);
             it.setOnAction(ev -> {
-                if ("Sin tiempo".equals(o)) {
-                    lblTimerState.setText("");
-                    ((ImageView) mbTimer.getGraphic()).setImage(icoTimer);
-                } else {
-                    lblTimerState.setText(o);
-                    ((ImageView) mbTimer.getGraphic()).setImage(icoTimerOn);
-                }
+                lblTimerState.setText(o);
+                updateIcons();
             });
             mbTimer.getItems().add(it);
         }
@@ -157,15 +168,14 @@ public class ChatWindow {
         tools.add(lblEncryptState, 0, 1);
         tools.add(lblTimerState, 1, 1);
 
-        /* ───────── REDACTOR ───────── */
+        /* ─── REDACTOR ─── */
         txtReply = new TextArea();
         txtReply.setPrefRowCount(4);
         txtReply.getStyleClass().add("chat-textarea");
 
         VBox compose = new VBox(6, txtReply);
-        compose.setPadding(new Insets(10));
 
-        /* ───────── BOTONES INFERIORES ───────── */
+        /* ─── BOTONES ENVIAR / CANCELAR ─── */
         btnSend = new Button();
         btnClose = new Button();
         btnSend.setOnAction(e -> sendReply(txtReply.getText().trim()));
@@ -178,15 +188,43 @@ public class ChatWindow {
         bottomBar.setAlignment(Pos.CENTER_LEFT);
         bottomBar.setPadding(new Insets(10));
 
+        /* ---- Contenedor que se mostrará al pulsar “Responder” ---- */
+        VBox replyBox = new VBox(compose, bottomBar);
+        replyBox.setVisible(false);
+        replyBox.setManaged(false);          // excluido del layout mientras está oculto
+
+        /* ========== BOTÓN “RESPONDER” (visible al inicio) ========== */
+        btnResponder = new Button(b.getString("chat.button.reply"));
+        btnResponder.getStyleClass().add("primary-button");
+        btnResponder.setOnAction(e -> {
+            replyBox.setVisible(true);
+            replyBox.setManaged(true);
+            btnResponder.setVisible(false);
+            btnResponder.setManaged(false);
+            txtReply.requestFocus();
+        });
+
         /* ───────── ROOT / ESCENA ───────── */
-        BorderPane root = new BorderPane(scroll, headerBox, null, new VBox(compose, bottomBar), null);
+        VBox.setMargin(btnResponder, new Insets(10));
+        VBox bottomArea = new VBox(btnResponder, replyBox);
+        bottomArea.setAlignment(Pos.CENTER_RIGHT);
+        bottomArea.setSpacing(10);
+        bottomArea.setPadding(new Insets(10, 0, 0, 0));
+
+        BorderPane root = new BorderPane(scroll, headerBox, null, bottomArea, null);
         root.setPadding(new Insets(10));
         root.getStyleClass().add("chat-root");
 
         Scene scene = new Scene(root, 700, 500);
         ThemeManager tm = ThemeManager.getInstance();
         scene.getStylesheets().setAll(tm.getCss());
-        tm.themeProperty().addListener((o, oldT, n) -> scene.getStylesheets().setAll(tm.getCss()));
+        /*  🔄 cambio de tema -> refresco CSS + iconos */
+        tm.themeProperty().addListener((o, oldT, n) -> {
+            scene.getStylesheets().setAll(tm.getCss());
+            updateIcons();
+        });
+
+        updateIcons();          // primera sincronización visual
 
         LocaleManager.localeProperty().addListener((o, oldL, n) -> refreshTexts());
         refreshTexts();
@@ -194,6 +232,7 @@ public class ChatWindow {
         stage.setScene(scene);
         stage.show();
     }
+
 
     /* =================================================================================== */
     /*                              REFRESCO DE TEXTOS                                    */
@@ -216,14 +255,16 @@ public class ChatWindow {
         txtReply.setPromptText(b.getString("chat.prompt.reply"));
         btnSend.setText(b.getString("chat.button.send"));
         btnClose.setText(b.getString("chat.button.close"));
+
+        /* controles añadidos */
+        lblEncryptState.setText(b.getString(encrypt ? "chat.encrypt.on" : "chat.encrypt.off"));
+        miTimerOff.setText(b.getString("chat.timer.off"));
+        btnResponder.setText(b.getString("chat.button.reply"));
     }
 
     /* =================================================================================== */
     /*                               ENVÍO DE RESPUESTA                                   */
     /* =================================================================================== */
-    /* ---------------------------------------------------------------------------------
-     *  ENVÍO DE RESPUESTA  (ChatWindow)
-     * --------------------------------------------------------------------------------*/
     private void sendReply(String plainText) {
         ResourceBundle b = LocaleManager.bundle();
 
@@ -243,7 +284,6 @@ public class ChatWindow {
 
             if (encrypt) {
                 PublicKey destPk = fetchDestPublicKey(destinatario);
-
                 HybridCrypto.HybridPayload p = HybridCrypto.encrypt(plainText, destPk);
 
                 dto.setCipherTextBase64(p.cipherB64());
@@ -269,7 +309,7 @@ public class ChatWindow {
 
                         Platform.runLater(() -> {
                             /* Añadimos a la bandeja de enviados */
-                            MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));           // ya lo tenemos en claro
+                            MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText)); // ya en claro
 
                             pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.alert.info.sent"));
                             stage.close();
@@ -287,13 +327,32 @@ public class ChatWindow {
         }
     }
 
-    /** Devuelve la clave pública RSA del destinatario */
+
+    private void updateIcons() {
+        /* Candado */
+        ImageView ivLock = (ImageView) btnEncrypt.getGraphic();
+        ivLock.setImage(encrypt ? icoEncryptOn : (isDark() ? icoEncryptDark : icoEncrypt));
+
+        /* Temporizador */
+        boolean timerActivo = !lblTimerState.getText().isBlank();
+        ImageView ivTimer = (ImageView) mbTimer.getGraphic();
+        ivTimer.setImage(timerActivo ? icoTimerOn : (isDark() ? icoTimerDark : icoTimer));
+
+        /* Adjuntar (no tiene estado ON) */
+        ImageView ivAttach = (ImageView) btnAttach.getGraphic();
+        ivAttach.setImage(isDark() ? icoAttachDark : icoAttach);
+    }
+
+    private boolean isDark() {
+        return "dark".equals(ThemeManager.getInstance().getTheme());
+    }
+
+    /**
+     * Devuelve la clave pública RSA del destinatario
+     */
     private PublicKey fetchDestPublicKey(String username) throws Exception {
-        HttpRequest pkReq = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:8080/api/users/" + username + "/publicKey"))
-                .GET().build();
+        HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + username + "/publicKey")).GET().build();
         String pubB64 = http.send(pkReq, HttpResponse.BodyHandlers.ofString()).body();
         return RSAUtils.publicKeyFromBase64(pubB64);
     }
-
 }
