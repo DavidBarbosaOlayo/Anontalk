@@ -8,6 +8,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -17,6 +18,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
@@ -65,6 +67,7 @@ public class MainInboxWindow extends Application {
     /* ======= iconos ======= */
     private final Image userIconLight = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/user.png")), 30, 30, true, true);
     private final Image userIconDark = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/user2.png")), 30, 30, true, true);
+    private final Image logoImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/logo.png")), 42, 42, true, true);
     private final Image trashIconLight = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/papelera.png")), 16, 16, true, true);
     private final Image trashIconDark = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/papelera2.png")), 16, 16, true, true);
     private final Image settingsIconLight = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/ajustes.png")), 30, 30, true, true);
@@ -145,6 +148,10 @@ public class MainInboxWindow extends Application {
         lblWelcome = new Label();
         lblWelcome.getStyleClass().add("welcome-label");
 
+        /* ───────── Logo ───────── */
+        ImageView ivLogo = new ImageView(logoImg);
+        ivLogo.setSmooth(true);
+
         /* ───────── Botón Perfil ───────── */
         profileIconView = new ImageView(darkTheme ? userIconDark : userIconLight);
         Button btnPerfil = new Button(null, profileIconView);
@@ -196,7 +203,7 @@ public class MainInboxWindow extends Application {
         });
 
         /* ───────── Top Bar ───────── */
-        HBox leftBox = new HBox(lblWelcome);
+        HBox leftBox = new HBox(10, ivLogo, lblWelcome);
         leftBox.setAlignment(Pos.CENTER_LEFT);
         HBox rightBox = new HBox(2, btnNuevo, btnPerfil, btnSettings, btnLogout);
         rightBox.setAlignment(Pos.CENTER_RIGHT);
@@ -374,32 +381,34 @@ public class MainInboxWindow extends Application {
         }
     }
 
-    // venta anuevo mensaje
+    /**
+     * Muestra la ventana “Redactar mensaje”.
+     * • No es modal → el usuario puede cambiar idioma/tema mientras está abierta.
+     * • Refresca textos e iconos en caliente.
+     */
     private void showSendDialog() {
-        ResourceBundle b = bundle();
-        encryptNew = false;                       // estado inicial
+        encryptNew = false;                      // estado inicial
 
-        Stage dlg = new Stage();
+        Stage dlg = new Stage();                 // SIN Modality → modeless
         dlg.initOwner(stage);
-        dlg.setTitle(b.getString("dialog.newMessage.title"));
 
-        /* ───────── CABECERA ───────── */
+        /* ---------- NODOS PRINCIPALES ---------- */
         TextField txtTo = new TextField();
-        txtTo.setPromptText(b.getString("dialog.newMessage.field.to"));
         TextField txtSubj = new TextField();
-        txtSubj.setPromptText(b.getString("dialog.newMessage.field.subject"));
-        VBox headerBox = new VBox(8, txtTo, txtSubj);
-        headerBox.setPadding(new Insets(0, 0, 10, 0));
-
-        /* ───────── CUERPO ───────── */
         TextArea txtBody = new TextArea();
-        txtBody.setPromptText(b.getString("dialog.newMessage.field.body"));
-        txtBody.setWrapText(true);
         txtBody.getStyleClass().add("chat-textarea");
+        txtBody.setWrapText(true);
         txtBody.setPrefRowCount(10);
+        VBox header = new VBox(8, txtTo, txtSubj);
+        header.setPadding(new Insets(0, 0, 10, 0));
         VBox.setVgrow(txtBody, Priority.ALWAYS);
 
-        /* ====== ICONOS / HERRAMIENTAS ====== */
+        /* ---------- ICONOS / TOOLS ---------- */
+        Button btnEncrypt = new Button(null, new ImageView(darkTheme ? icoEncryptDark : icoEncrypt));
+        btnEncrypt.getStyleClass().add("icon-button");
+        Label lblEncrypt = new Label();
+        lblEncrypt.getStyleClass().add("tool-label");
+
         MenuButton mbTimer = new MenuButton(null, new ImageView(darkTheme ? icoTimerDark : icoTimer));
         mbTimer.getStyleClass().add("icon-button");
         Label lblTimer = new Label();
@@ -408,33 +417,32 @@ public class MainInboxWindow extends Application {
         Button btnAttach = new Button(null, new ImageView(darkTheme ? icoAttachDark : icoAttach));
         btnAttach.getStyleClass().add("icon-button");
 
-        Button btnEncrypt = new Button(null, new ImageView(darkTheme ? icoEncryptDark : icoEncrypt));
-        btnEncrypt.getStyleClass().add("icon-button");
-        Label lblEncrypt = new Label(b.getString("chat.encrypt.off"));
-        lblEncrypt.getStyleClass().add("tool-label");
-
-        btnEncrypt.setOnAction(e -> {
-            encryptNew = !encryptNew;
-            lblEncrypt.setText(b.getString(encryptNew ? "chat.encrypt.on" : "chat.encrypt.off"));
-            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
-        });
-
-        MenuItem miNoTime = new MenuItem(b.getString("chat.timer.off"));
-        miNoTime.setOnAction(ev -> {
-            lblTimer.setText("");
-            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
-        });
-        mbTimer.getItems().add(miNoTime);
-
-        for (String o : new String[]{"30 s", "1 min", "5 min", "30 min"}) {
-            MenuItem mi = new MenuItem(o);
-            mi.setOnAction(ev -> {
-                lblTimer.setText(o);
+        /* ---- Timer items ---- */
+        MenuItem miTimerOff = new MenuItem();
+        mbTimer.getItems().add(miTimerOff);
+        for (String t : new String[]{"30 s", "1 min", "5 min", "30 min"}) {
+            MenuItem mi = new MenuItem(t);
+            mi.setOnAction(e -> {
+                lblTimer.setText(t);
                 updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
             });
             mbTimer.getItems().add(mi);
         }
 
+        /* ---- Encrypt toggle ---- */
+        btnEncrypt.setOnAction(e -> {
+            encryptNew = !encryptNew;
+            lblEncrypt.setText(bundle().getString(encryptNew ? "chat.encrypt.on" : "chat.encrypt.off"));
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
+        });
+
+        /* ---- Timer OFF ---- */
+        miTimerOff.setOnAction(e -> {
+            lblTimer.setText("");
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
+        });
+
+        /* ---- Tools grid ---- */
         GridPane tools = new GridPane();
         tools.setHgap(14);
         tools.setVgap(2);
@@ -450,15 +458,16 @@ public class MainInboxWindow extends Application {
         tools.add(lblEncrypt, 0, 1);
         tools.add(lblTimer, 1, 1);
 
-        /* ───────── BOTONES ENVIAR / CANCELAR ───────── */
-        Button btnSend = new Button(b.getString("dialog.newMessage.button.send"));
-        Button btnCanc = new Button(b.getString("dialog.newMessage.button.cancel"));
+        /* ---------- BOTONES ---------- */
+        Button btnSend = new Button();
+        Button btnCanc = new Button();
         btnCanc.setOnAction(e -> dlg.close());
 
-        /* ========== BLOQUE DE ENVÍO – EXACTO AL ORIGINAL ========== */
+        /* ========== ENVÍO ========== */
         btnSend.setOnAction(e -> {
             String dest = txtTo.getText().trim();
             String plain = txtBody.getText().trim();
+            ResourceBundle b = bundle();
 
             if (dest.isBlank() || plain.isBlank()) {
                 pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.incomplete"));
@@ -466,7 +475,7 @@ public class MainInboxWindow extends Application {
             }
 
             try {
-                /* 1) obtener clave pública del destinatario */
+                /* 1) clave pública destinatario */
                 HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + dest + "/publicKey")).GET().build();
                 HttpResponse<String> pkRes = http.send(pkReq, HttpResponse.BodyHandlers.ofString());
 
@@ -479,32 +488,31 @@ public class MainInboxWindow extends Application {
                     return;
                 }
 
-                /* 2) construir DTO */
+                /* 2) DTO */
                 MensajeDTO dto = new MensajeDTO();
                 dto.setRemitente(currentUser);
                 dto.setDestinatario(dest);
                 dto.setAsunto(txtSubj.getText().trim());
 
-                if (encryptNew) {                          // cifrado híbrido
+                if (encryptNew) {
                     PublicKey pkDest = RSAUtils.publicKeyFromBase64(pkRes.body());
-                    var payload = HybridCrypto.encrypt(plain, pkDest);
-                    dto.setCipherTextBase64(payload.cipherB64());
-                    dto.setEncKeyBase64(payload.encKeyB64());
-                    dto.setIvBase64(payload.ivB64());
-                } else {                                   // sin cifrar
-                    String b64 = Base64.getEncoder().encodeToString(plain.getBytes(StandardCharsets.UTF_8));
-                    dto.setCipherTextBase64(b64);
+                    var p = HybridCrypto.encrypt(plain, pkDest);
+                    dto.setCipherTextBase64(p.cipherB64());
+                    dto.setEncKeyBase64(p.encKeyB64());
+                    dto.setIvBase64(p.ivB64());
+                } else {
+                    dto.setCipherTextBase64(Base64.getEncoder().encodeToString(plain.getBytes(StandardCharsets.UTF_8)));
                     dto.setEncKeyBase64(null);
                     dto.setIvBase64(null);
                 }
 
-                /* 3) POST /send */
+                /* 3) POST */
                 String json = mapper.writeValueAsString(dto);
                 HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
 
                 http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(res -> Platform.runLater(() -> {
                     if (res.statusCode() == 200) {
-                        refreshSent();          // lista “Enviados”
+                        refreshSent();
                         dlg.close();
                         pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("dialog.newMessage.info.sent"));
                     } else {
@@ -513,35 +521,54 @@ public class MainInboxWindow extends Application {
                 }));
 
             } catch (Exception ex) {
-                pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.encrypt"));
+                pop.mostrarAlertaError(bundle().getString("common.error"), bundle().getString("dialog.newMessage.error.encrypt"));
             }
         });
 
-        /* ───────── BARRA INFERIOR ───────── */
+        /* ---------- BARRA INFERIOR ---------- */
         Region stretch = new Region();
         HBox.setHgrow(stretch, Priority.ALWAYS);
-        HBox bottomBar = new HBox(10, tools, stretch, btnSend, btnCanc);
-        bottomBar.setAlignment(Pos.CENTER_LEFT);
-        bottomBar.setPadding(new Insets(10, 0, 0, 0));
+        HBox bottom = new HBox(10, tools, stretch, btnSend, btnCanc);
+        bottom.setAlignment(Pos.CENTER_LEFT);
+        bottom.setPadding(new Insets(10, 0, 0, 0));
 
-        /* ───────── ROOT & SCENE ───────── */
-        BorderPane root = new BorderPane();
-        root.setTop(headerBox);
-        root.setCenter(txtBody);
-        root.setBottom(bottomBar);
+        /* ---------- ROOT / SCENE ---------- */
+        BorderPane root = new BorderPane(txtBody);
+        root.setTop(header);
+        root.setBottom(bottom);
         root.setPadding(new Insets(20));
 
-        ThemeManager tm = ThemeManager.getInstance();
         Scene sc = new Scene(root, 560, 460);
-        sc.getStylesheets().setAll(tm.getCss());
+        sc.getStylesheets().setAll(ThemeManager.getInstance().getCss());
 
-        tm.themeProperty().addListener((o, oldT, n) -> {
-            sc.getStylesheets().setAll(tm.getCss());
+        /* --- Tema en caliente --- */
+        ThemeManager.getInstance().themeProperty().addListener((o, oldT, n) -> {
+            sc.getStylesheets().setAll(ThemeManager.getInstance().getCss());
             darkTheme = "dark".equals(n);
             updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
         });
 
+        /* --- TEXTOS en caliente --- */
+        Runnable refreshTexts = () -> {
+            ResourceBundle b = bundle();
+            dlg.setTitle(b.getString("dialog.newMessage.title"));
+            txtTo.setPromptText(b.getString("dialog.newMessage.field.to"));
+            txtSubj.setPromptText(b.getString("dialog.newMessage.field.subject"));
+            txtBody.setPromptText(b.getString("dialog.newMessage.field.body"));
+            lblEncrypt.setText(b.getString(encryptNew ? "chat.encrypt.on" : "chat.encrypt.off"));
+            miTimerOff.setText(b.getString("chat.timer.off"));
+            btnSend.setText(b.getString("dialog.newMessage.button.send"));
+            btnCanc.setText(b.getString("dialog.newMessage.button.cancel"));
+        };
+        refreshTexts.run();
+
+        ChangeListener<Locale> locL = (o, oldL, newL) -> refreshTexts.run();
+        LocaleManager.localeProperty().addListener(locL);
+        dlg.setOnHidden(e -> LocaleManager.localeProperty().removeListener(locL));
+
+        /* --- Iconos iniciales --- */
         updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
+
         dlg.setScene(sc);
         dlg.show();
     }
@@ -558,7 +585,7 @@ public class MainInboxWindow extends Application {
             /* Mensaje cifrado híbrido */
             return HybridCrypto.decrypt(new HybridCrypto.HybridPayload(dto.getCipherTextBase64(), dto.getEncKeyBase64(), dto.getIvBase64()), KeyManager.getPrivateKey());
         } catch (Exception ex) {
-            return "[Error al procesar mensaje]";
+            return "[Error -- No puedes descifrar este mensaje]";
         }
     }
 
