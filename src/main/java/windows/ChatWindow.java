@@ -25,10 +25,12 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.Objects;
 import java.util.ResourceBundle;
 
@@ -52,6 +54,8 @@ public class ChatWindow {
     private Label lblEncryptState;
     private MenuButton mbTimer;
     private Button btnEncrypt, btnAttach, btnSend, btnClose;
+    private boolean encrypt = false;     // SIN cifrar predeterminado
+
 
     /* ---------------- iconos ---------------- */
     private final Image icoEncrypt = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifrado.png")), 36, 36, true, true);
@@ -110,10 +114,11 @@ public class ChatWindow {
         lblEncryptState = new Label("Sin cifrar");
         lblEncryptState.getStyleClass().add("tool-label");
         btnEncrypt.setOnAction(e -> {
-            boolean on = "Sin cifrar".equals(lblEncryptState.getText());
-            ((ImageView) btnEncrypt.getGraphic()).setImage(on ? icoEncryptOn : icoEncrypt);
-            lblEncryptState.setText(on ? "Cifrado" : "Sin cifrar");
+            encrypt = !encrypt;
+            ((ImageView) btnEncrypt.getGraphic()).setImage(encrypt ? icoEncryptOn : icoEncrypt);
+            lblEncryptState.setText(encrypt ? "Cifrado" : "Sin cifrar");
         });
+
 
         mbTimer = new MenuButton(null, new ImageView(icoTimer));
         mbTimer.getStyleClass().add("icon-button");
@@ -216,9 +221,13 @@ public class ChatWindow {
     /* =================================================================================== */
     /*                               ENVÍO DE RESPUESTA                                   */
     /* =================================================================================== */
+    /* ---------------------------------------------------------------------------------
+     *  ENVÍO DE RESPUESTA  (ChatWindow)
+     * --------------------------------------------------------------------------------*/
     private void sendReply(String plainText) {
         ResourceBundle b = LocaleManager.bundle();
 
+        /* 0) Validación rápida ------------------------------------------------------- */
         if (plainText.isEmpty()) {
             pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.emptyMessage"));
             return;
@@ -226,20 +235,29 @@ public class ChatWindow {
         String destinatario = mensaje.getSender();
 
         try {
-            HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + destinatario + "/publicKey")).GET().build();
-            String pubB64 = http.send(pkReq, HttpResponse.BodyHandlers.ofString()).body();
-            PublicKey destPk = RSAUtils.publicKeyFromBase64(pubB64);
-
-            HybridCrypto.HybridPayload p = HybridCrypto.encrypt(plainText, destPk);
-
+            /* 1) Construir DTO ------------------------------------------------------- */
             MensajeDTO dto = new MensajeDTO();
             dto.setRemitente(currentUser);
             dto.setDestinatario(destinatario);
             dto.setAsunto(mensaje.getAsunto());
-            dto.setCipherTextBase64(p.cipherB64());
-            dto.setEncKeyBase64(p.encKeyB64());
-            dto.setIvBase64(p.ivB64());
 
+            if (encrypt) {
+                PublicKey destPk = fetchDestPublicKey(destinatario);
+
+                HybridCrypto.HybridPayload p = HybridCrypto.encrypt(plainText, destPk);
+
+                dto.setCipherTextBase64(p.cipherB64());
+                dto.setEncKeyBase64(p.encKeyB64());
+                dto.setIvBase64(p.ivB64());
+            } else {                                        // 📨  ENVIAR EN CLARO
+                String b64 = Base64.getEncoder().encodeToString(plainText.getBytes(StandardCharsets.UTF_8));
+
+                dto.setCipherTextBase64(b64);
+                dto.setEncKeyBase64(null);   // ← señal de “no cifrado”
+                dto.setIvBase64(null);
+            }
+
+            /* 2) POST al backend ------------------------------------------------------ */
             String json = mapper.writeValueAsString(dto);
 
             HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
@@ -248,8 +266,11 @@ public class ChatWindow {
                 if (resp.statusCode() == 200) {
                     try {
                         MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
+
                         Platform.runLater(() -> {
-                            MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));
+                            /* Añadimos a la bandeja de enviados */
+                            MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));           // ya lo tenemos en claro
+
                             pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.alert.info.sent"));
                             stage.close();
                         });
@@ -261,8 +282,18 @@ public class ChatWindow {
                 }
             });
 
-        } catch (Exception ex) {
+        } catch (Exception ex) {            // incluye fallo al cifrar o a la red
             pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.encrypt"));
         }
     }
+
+    /** Devuelve la clave pública RSA del destinatario */
+    private PublicKey fetchDestPublicKey(String username) throws Exception {
+        HttpRequest pkReq = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/api/users/" + username + "/publicKey"))
+                .GET().build();
+        String pubB64 = http.send(pkReq, HttpResponse.BodyHandlers.ofString()).body();
+        return RSAUtils.publicKeyFromBase64(pubB64);
+    }
+
 }

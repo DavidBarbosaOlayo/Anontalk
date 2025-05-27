@@ -20,10 +20,10 @@ public class MensajeSB {
     @Column(name = "cipher_text_base64", columnDefinition = "TEXT", nullable = false)
     private String cipherTextBase64;
 
-    @Column(name = "enc_key_base64", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "enc_key_base64", columnDefinition = "TEXT", nullable = true)
     private String encKeyBase64;
 
-    @Column(name = "iv_base64", length = 24, nullable = false) // 12 bytes → 16 o 24 B64
+    @Column(name = "iv_base64", length = 24, nullable = true) // 12 bytes → 16 o 24 B64
     private String ivBase64;
 
     @Column(name = "fecha_hora")
