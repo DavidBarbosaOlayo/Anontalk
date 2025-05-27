@@ -208,3 +208,19 @@
 .tool-toggle:hover {
   -fx-opacity: .85;
 }
+
+/* tamaño del cuerpo del mensaje ─ antes 14 px */
+.chat-message-body {
+    -fx-font-size: 16px;
+}
+
+/* nueva clase para el valor (remitente, asunto, fecha) */
+.chat-header-value {
+    -fx-font-weight: bold;
+}
+
+/* subimos un punto los encabezados */
+.chat-header-line,
+.chat-header-date {
+    -fx-font-size: 14px;          /* antes 14 / 13 px */
+}

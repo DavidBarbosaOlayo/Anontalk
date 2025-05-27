@@ -45,7 +45,9 @@ public class ChatWindow {
 
     /* ---------------- UI dinámico ---------------- */
     private Stage stage;
-    private Label lblSender, lblSubject, lblDate;
+    private Label lblDateKey, lblDateValue;
+    private Label lblSenderKey, lblSenderValue;
+    private Label lblSubjectKey, lblSubjectValue;
     private TextArea txtReply;
     private Label lblEncryptState;
     private MenuButton mbTimer;
@@ -58,9 +60,7 @@ public class ChatWindow {
     private final Image icoEncryptOn = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifrado1.png")), 36, 36, true, true);
     private final Image icoTimerOn = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/timer1.png")), 36, 36, true, true);
 
-
     /* =================================================================================== */
-
     public ChatWindow(String currentUser, Mensaje mensaje) {
         this.currentUser = currentUser;
         this.mensaje = mensaje;
@@ -73,17 +73,26 @@ public class ChatWindow {
         stage = new Stage();
 
         /* ───────── CABECERA ───────── */
-        lblSender = new Label();
-        lblSubject = new Label();
-        lblDate = new Label();
-        lblSender.getStyleClass().add("chat-header-line");
-        lblSubject.getStyleClass().add("chat-header-line");
-        lblDate.getStyleClass().add("chat-header-date");
+        lblDateKey = new Label();
+        lblDateValue = new Label();
+        lblSenderKey = new Label();
+        lblSenderValue = new Label();
+        lblSubjectKey = new Label();
+        lblSubjectValue = new Label();
 
-        VBox leftHeader = new VBox(2, lblSender, lblSubject);
-        Region spacerH = new Region();
-        HBox.setHgrow(spacerH, Priority.ALWAYS);
-        HBox headerBox = new HBox(leftHeader, spacerH, lblDate);
+        // estilos
+        lblDateKey.getStyleClass().add("chat-header-date");
+        lblDateValue.getStyleClass().addAll("chat-header-date", "chat-header-value");
+        lblSenderKey.getStyleClass().add("chat-header-line");
+        lblSenderValue.getStyleClass().addAll("chat-header-line", "chat-header-value");
+        lblSubjectKey.getStyleClass().add("chat-header-line");
+        lblSubjectValue.getStyleClass().addAll("chat-header-line", "chat-header-value");
+
+        HBox dateBox = new HBox(4, lblDateKey, lblDateValue);
+        HBox senderBox = new HBox(4, lblSenderKey, lblSenderValue);
+        HBox subjectBox = new HBox(4, lblSubjectKey, lblSubjectValue);
+
+        VBox headerBox = new VBox(2, dateBox, senderBox, subjectBox);
         headerBox.setAlignment(Pos.CENTER_LEFT);
         headerBox.setPadding(new Insets(0, 0, 10, 0));
 
@@ -91,11 +100,11 @@ public class ChatWindow {
         Label lblBody = new Label(mensaje.getContent());
         lblBody.setWrapText(true);
         lblBody.getStyleClass().add("chat-message-body");
+
         ScrollPane scroll = new ScrollPane(lblBody);
         scroll.setFitToWidth(true);
 
         /* ───────── ICONOS / HERRAMIENTAS ───────── */
-        // — cifrado
         btnEncrypt = new Button(null, new ImageView(icoEncrypt));
         btnEncrypt.getStyleClass().add("icon-button");
         lblEncryptState = new Label("Sin cifrar");
@@ -106,7 +115,6 @@ public class ChatWindow {
             lblEncryptState.setText(on ? "Cifrado" : "Sin cifrar");
         });
 
-        // — temporizador
         mbTimer = new MenuButton(null, new ImageView(icoTimer));
         mbTimer.getStyleClass().add("icon-button");
         Label lblTimerState = new Label();
@@ -126,11 +134,9 @@ public class ChatWindow {
             mbTimer.getItems().add(it);
         }
 
-        // — adjuntar
         btnAttach = new Button(null, new ImageView(icoAttach));
         btnAttach.getStyleClass().add("icon-button");
 
-        /* GridPane 2×3 para iconos centrados */
         GridPane tools = new GridPane();
         tools.setHgap(14);
         tools.setVgap(2);
@@ -140,7 +146,6 @@ public class ChatWindow {
             cc.setHalignment(HPos.CENTER);
             tools.getColumnConstraints().add(cc);
         }
-
         tools.add(btnEncrypt, 0, 0);
         tools.add(mbTimer, 1, 0);
         tools.add(btnAttach, 2, 0);
@@ -152,10 +157,10 @@ public class ChatWindow {
         txtReply.setPrefRowCount(4);
         txtReply.getStyleClass().add("chat-textarea");
 
-        VBox compose = new VBox(6, txtReply);   // solo el área de texto
+        VBox compose = new VBox(6, txtReply);
         compose.setPadding(new Insets(10));
 
-        /* ───────── BOTONES INFERIORES + ICONOS ───────── */
+        /* ───────── BOTONES INFERIORES ───────── */
         btnSend = new Button();
         btnClose = new Button();
         btnSend.setOnAction(e -> sendReply(txtReply.getText().trim()));
@@ -165,8 +170,8 @@ public class ChatWindow {
         HBox.setHgrow(stretch, Priority.ALWAYS);
 
         HBox bottomBar = new HBox(10, tools, stretch, btnSend, btnClose);
-        bottomBar.setAlignment(Pos.CENTER_LEFT);      // iconos a la izquierda, botones a la derecha
-        bottomBar.setPadding(new Insets(10, 10, 10, 10));
+        bottomBar.setAlignment(Pos.CENTER_LEFT);
+        bottomBar.setPadding(new Insets(10));
 
         /* ───────── ROOT / ESCENA ───────── */
         BorderPane root = new BorderPane(scroll, headerBox, null, new VBox(compose, bottomBar), null);
@@ -188,20 +193,22 @@ public class ChatWindow {
     /* =================================================================================== */
     /*                              REFRESCO DE TEXTOS                                    */
     /* =================================================================================== */
-
     private void refreshTexts() {
         ResourceBundle b = LocaleManager.bundle();
 
         stage.setTitle(MessageFormat.format(b.getString("chat.window.title"), mensaje.getSender()));
 
-        lblSender.setText(b.getString("chat.header.from") + mensaje.getSender());
-        lblSubject.setText(b.getString("chat.header.subject") + mensaje.getAsunto());
-
+        lblDateKey.setText(b.getString("chat.header.date"));
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-        lblDate.setText(b.getString("chat.header.date") + LocalDateTime.now().format(fmt));
+        lblDateValue.setText(LocalDateTime.now().format(fmt));
+
+        lblSenderKey.setText(b.getString("chat.header.from"));
+        lblSenderValue.setText(mensaje.getSender());
+
+        lblSubjectKey.setText(b.getString("chat.header.subject"));
+        lblSubjectValue.setText(mensaje.getAsunto());
 
         txtReply.setPromptText(b.getString("chat.prompt.reply"));
-
         btnSend.setText(b.getString("chat.button.send"));
         btnClose.setText(b.getString("chat.button.close"));
     }
@@ -209,7 +216,6 @@ public class ChatWindow {
     /* =================================================================================== */
     /*                               ENVÍO DE RESPUESTA                                   */
     /* =================================================================================== */
-
     private void sendReply(String plainText) {
         ResourceBundle b = LocaleManager.bundle();
 
@@ -217,19 +223,15 @@ public class ChatWindow {
             pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.emptyMessage"));
             return;
         }
-
         String destinatario = mensaje.getSender();
 
         try {
-            /* clave pública destinatario */
             HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + destinatario + "/publicKey")).GET().build();
             String pubB64 = http.send(pkReq, HttpResponse.BodyHandlers.ofString()).body();
             PublicKey destPk = RSAUtils.publicKeyFromBase64(pubB64);
 
-            /* cifrado híbrido */
             HybridCrypto.HybridPayload p = HybridCrypto.encrypt(plainText, destPk);
 
-            /* DTO */
             MensajeDTO dto = new MensajeDTO();
             dto.setRemitente(currentUser);
             dto.setDestinatario(destinatario);
@@ -240,7 +242,6 @@ public class ChatWindow {
 
             String json = mapper.writeValueAsString(dto);
 
-            /* POST /messages/send */
             HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
 
             http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
