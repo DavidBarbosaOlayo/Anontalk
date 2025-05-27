@@ -112,8 +112,10 @@ public class MainInboxWindow extends Application {
         this.stage = stage;
 
         /* idioma por defecto */
-        LocaleManager.setLocale(Locale.ENGLISH);
-
+        LocaleManager.localeProperty().addListener((o, oldL, newL) -> {
+            refreshTexts();
+            loadMessages(); // <--- Recarga los mensajes y los decodifica con el nuevo idioma
+        });
         /* cerrar app */
         stage.initStyle(StageStyle.UNDECORATED);
         stage.setOnCloseRequest(e -> {
@@ -577,6 +579,7 @@ public class MainInboxWindow extends Application {
 //  Descifra o simplemente decodifica Base64 según corresponda
 // -------------------------------------------------------------
     private String decodeBody(MensajeDTO dto) {
+        ResourceBundle b = bundle();
         try {
             if (dto.getEncKeyBase64() == null || dto.getEncKeyBase64().isBlank()) {
                 /* Mensaje en claro → solo Base64-decode */
@@ -585,7 +588,7 @@ public class MainInboxWindow extends Application {
             /* Mensaje cifrado híbrido */
             return HybridCrypto.decrypt(new HybridCrypto.HybridPayload(dto.getCipherTextBase64(), dto.getEncKeyBase64(), dto.getIvBase64()), KeyManager.getPrivateKey());
         } catch (Exception ex) {
-            return "[Error -- No puedes descifrar este mensaje]";
+            return b.getString("chat.alert.error.encrypt.reply");
         }
     }
 

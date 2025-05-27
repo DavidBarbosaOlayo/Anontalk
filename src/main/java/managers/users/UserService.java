@@ -47,20 +47,20 @@ public class UserService {
     public void register(String username, String plainPwd, String email) throws Exception {
         // Validaciones básicas
         if (username == null || username.length() < 5) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El usuario debe tener al menos 5 caracteres");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The username must be at least 5 characters long");
         }
         if (plainPwd == null || !PASSWORD_PATTERN.matcher(plainPwd).matches()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener al menos 8 caracteres, " + "una mayúscula, una minúscula, un número y un carácter especial");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The password must be at least 8 characters long, and include an uppercase letter, a lowercase letter, a number, and a special character");
         }
         if (repo.findByUsername(username).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe un usuario con ese nombre");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A user with that username already exists");
         }
 
         if (email == null || !EMAIL_PATTERN.matcher(email).matches()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email no válido");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid email address");
         }
         if (repo.findByEmail(email).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe un usuario con ese email");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A user with that email already exists");
         }
 
         // Generar par RSA

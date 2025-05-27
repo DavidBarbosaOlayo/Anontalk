@@ -168,21 +168,36 @@ public class LoginWindow extends Application {
             return;
         }
         try {
-            JsonNode body = mapper.createObjectNode().put("username", user).put("password", pwd).put("email", email);
+            JsonNode body = mapper.createObjectNode()
+                    .put("username", user)
+                    .put("password", pwd)
+                    .put("email", email);
 
-            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/register")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8080/api/users/register"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
+                    .build();
 
-            http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> Platform.runLater(() -> {
-                if (resp.statusCode() == 200) {
-                    pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("login.alert.info.userRegistered"));
-                } else if (resp.statusCode() == 409) {
-                    pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.userOrEmailExists"));
-                } else {
-                    pop.mostrarAlertaError(b.getString("common.error"), b.getString("login.alert.error.registerFailed"));
-                }
-            }));
-        } catch (Exception ignored) {
-        }
+            http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(resp -> Platform.runLater(() -> {
+                        if (resp.statusCode() == 200) {
+                            pop.mostrarAlertaInformativa(b.getString("common.success"),
+                                    b.getString("login.alert.info.userRegistered"));
+                        } else {
+                            // Extraer mensaje de error del servidor
+                            String errorMessage;
+                            try {
+                                JsonNode errorJson = mapper.readTree(resp.body());
+                                errorMessage = errorJson.get("message").asText();
+                            } catch (Exception ex) {
+                                errorMessage = b.getString("login.alert.error.registerFailed");
+                            }
+
+                            pop.mostrarAlertaError(b.getString("common.error"), errorMessage);
+                        }
+                    }));
+        } catch (Exception ignored) {}
     }
 
     private void login(String user, String pwd) {
