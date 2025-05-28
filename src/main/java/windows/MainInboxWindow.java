@@ -73,6 +73,7 @@ public class MainInboxWindow extends Application {
     private final Image userIconLight = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/user.png")), 30, 30, true, true);
     private final Image userIconDark = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/user2.png")), 30, 30, true, true);
     private final Image logoImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/logo.png")), 42, 42, true, true);
+    private final Image logoImgDark = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/logoDark.png")), 42, 42, true, true);
     private final Image trashIconLight = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/papelera.png")), 16, 16, true, true);
     private final Image trashIconDark = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/papelera2.png")), 16, 16, true, true);
     private final Image settingsIconLight = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/ajustes.png")), 30, 30, true, true);
@@ -97,6 +98,7 @@ public class MainInboxWindow extends Application {
     private ImageView settingsIconView;
     private ImageView newMsgIconView;
     private ImageView logoutIconView;
+    private ImageView logoView;
 
     /* para cambiar el icono de la papelera cuando alternamos tema */
     private final List<Button> trashButtons = new ArrayList<>();
@@ -110,6 +112,7 @@ public class MainInboxWindow extends Application {
     public MainInboxWindow(String currentUser, ConfigurableApplicationContext springCtx) {
         this.currentUser = currentUser;
         this.springCtx = springCtx;
+        this.darkTheme = "dark".equals(ThemeManager.getInstance().getTheme());
     }
 
     @Override
@@ -132,6 +135,7 @@ public class MainInboxWindow extends Application {
         /* construimos UI */
         BorderPane root = buildUI();
         scene = new Scene(root, 791, 600);
+        actualizarTemaUI();
         ThemeManager tm = ThemeManager.getInstance();
         scene.getStylesheets().setAll(tm.getCss());
         tm.themeProperty().addListener((o, oldT, n) -> scene.getStylesheets().setAll(tm.getCss()));
@@ -156,8 +160,8 @@ public class MainInboxWindow extends Application {
         lblWelcome.getStyleClass().add("welcome-label");
 
         /* ───────── Logo ───────── */
-        ImageView ivLogo = new ImageView(logoImg);
-        ivLogo.setSmooth(true);
+        logoView = new ImageView(darkTheme ? logoImgDark : logoImg);
+
 
         /* ───────── Botón Perfil ───────── */
         profileIconView = new ImageView(darkTheme ? userIconDark : userIconLight);
@@ -222,7 +226,7 @@ public class MainInboxWindow extends Application {
         });
 
         /* ───────── Top Bar ───────── */
-        HBox leftBox = new HBox(10, ivLogo, lblWelcome);
+        HBox leftBox = new HBox(10, logoView, lblWelcome);
         leftBox.setAlignment(Pos.CENTER_LEFT);
         HBox rightBox = new HBox(2, btnNuevo, btnPerfil, btnSettings, btnLogout);
         rightBox.setAlignment(Pos.CENTER_RIGHT);
@@ -680,6 +684,7 @@ public class MainInboxWindow extends Application {
         settingsIconView.setImage(isDark ? settingsIconDark : settingsIconLight);
         newMsgIconView.setImage(isDark ? newMsgIconDark : newMsgIconLight);
         logoutIconView.setImage(isDark ? logoutIconDark : logoutIconLight);
+        logoView.setImage(isDark ? logoImgDark : logoImg);
 
         // Actualizar botones de papelera
         trashButtons.forEach(b -> b.setGraphic(new ImageView(isDark ? trashIconDark : trashIconLight)));

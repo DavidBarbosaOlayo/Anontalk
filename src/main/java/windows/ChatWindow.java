@@ -63,6 +63,8 @@ public class ChatWindow {
     private boolean encrypt = false;     // SIN cifrar predeterminado
     private List<File> selectedFiles = new ArrayList<>();
 
+    private VBox chatArea;
+    private ScrollPane chatScrollPane;
 
     /* ---------------- iconos ---------------- */
     private final Image icoEncrypt = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifrado.png")), 36, 36, true, true);
@@ -106,46 +108,69 @@ public class ChatWindow {
         HBox dateBox = new HBox(4, lblDateKey, lblDateValue);
         HBox senderBox = new HBox(4, lblSenderKey, lblSenderValue);
         HBox subjectBox = new HBox(4, lblSubjectKey, lblSubjectValue);
+
         VBox headerBox = new VBox(2, dateBox, senderBox, subjectBox);
         headerBox.setAlignment(Pos.CENTER_LEFT);
         headerBox.setPadding(new Insets(0, 0, 10, 0));
 
+        /* ───────── ÁREA DE CHAT ───────── */
+        chatArea = new VBox(10);
+        chatArea.setPadding(new Insets(10));
+
+        // Agregar el mensaje inicial (del remitente)
+        addMessageToChat(mensaje.getSender(), mensaje.getContent(), false);
+
+        chatScrollPane = new ScrollPane(chatArea);
+        chatScrollPane.setFitToWidth(true);
+        chatScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        chatScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        chatScrollPane.getStyleClass().add("chat-area"); // Borde del área de chat
+
+        /* ─── SECCIÓN DE ADJUNTOS (recibidos) ───────────────────────── */
         /* ─── SECCIÓN DE ADJUNTOS (recibidos) ───────────────────────── */
         VBox attachmentsSection = new VBox(4);
-        Label loading = new Label(b.getString("common.info") + ": loading attachments…");
+
+// Manejo seguro de recursos internacionalizados
+        String loadingText;
+        try {
+            loadingText = b.getString("common.info") + ": " + b.getString("chat.attachments.loading");
+        } catch (MissingResourceException e) {
+            loadingText = "Loading attachments...";
+        }
+        Label loading = new Label(loadingText);
+
         attachmentsSection.getChildren().add(loading);
 
-        // Carga asíncrona de adjuntos
-        HttpRequest attReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/" + mensaje.getId() + "/attachments")).GET().build();
-        http.sendAsync(attReq, HttpResponse.BodyHandlers.ofString()).thenApply(HttpResponse::body).thenApply(body -> {
-            try {
-                return mapper.readValue(body, new com.fasterxml.jackson.core.type.TypeReference<List<AdjuntoDTO>>() {
-                });
-            } catch (Exception e) {
-                return List.<AdjuntoDTO>of();
-            }
-        }).thenAccept(adjList -> Platform.runLater(() -> {
-            attachmentsSection.getChildren().clear();
-            if (adjList.isEmpty()) {
-                return;
-            }
-            Label lblAtt = new Label(b.getString("chat.header.attachments"));
-            lblAtt.getStyleClass().add("chat-header-line");
-            attachmentsSection.getChildren().add(lblAtt);
-            for (AdjuntoDTO a : adjList) {
-                Button btnFile = new Button(a.getFilename());
-                btnFile.getStyleClass().add("tool-button");
-                btnFile.setOnAction(evt -> downloadAttachment(a));
-                attachmentsSection.getChildren().add(btnFile);
-            }
-        }));
+// Carga asíncrona de adjuntos
+        HttpRequest attReq = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/api/messages/" + mensaje.getId() + "/attachments"))
+                .GET().build();
+        http.sendAsync(attReq, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body)
+                .thenApply(body -> {
+                    try {
+                        return mapper.readValue(body, new com.fasterxml.jackson.core.type.TypeReference<List<AdjuntoDTO>>() {});
+                    } catch (Exception e) {
+                        return List.<AdjuntoDTO>of();
+                    }
+                })
+                .thenAccept(adjList -> Platform.runLater(() -> {
+                    attachmentsSection.getChildren().clear();
+                    if (adjList.isEmpty()) {
+                        return;
+                    }
 
-        /* ───────── MENSAJE RECIBIDO ───────── */
-        Label lblBody = new Label(mensaje.getContent());
-        lblBody.setWrapText(true);
-        lblBody.getStyleClass().add("chat-message-body");
-        ScrollPane scroll = new ScrollPane(lblBody);
-        scroll.setFitToWidth(true);
+                    Label lblAtt = new Label(b.getString("chat.header.attachments"));
+                    lblAtt.getStyleClass().add("chat-header-line");
+                    attachmentsSection.getChildren().add(lblAtt);
+
+                    for (AdjuntoDTO a : adjList) {
+                        Button btnFile = new Button(a.getFilename());
+                        btnFile.getStyleClass().add("tool-button");
+                        btnFile.setOnAction(evt -> downloadAttachment(a));
+                        attachmentsSection.getChildren().add(btnFile);
+                    }
+                }));
 
         /* ========== ÁREA DE RESPUESTA (oculta) ========== */
         btnEncrypt = new Button(null, new ImageView(icoEncrypt));
@@ -243,7 +268,7 @@ public class ChatWindow {
         VBox topContent = new VBox(headerBox, attachmentsSection);
         topContent.setPadding(new Insets(10, 0, 10, 0));
 
-        BorderPane root = new BorderPane(scroll, topContent, null, bottomArea, null);
+        BorderPane root = new BorderPane(chatScrollPane, topContent, null, bottomArea, null);
         root.setPadding(new Insets(10));
         root.getStyleClass().add("chat-root");
 
@@ -263,7 +288,6 @@ public class ChatWindow {
         stage.show();
     }
 
-
     /* =================================================================================== */
     /*                              REFRESCO DE TEXTOS                                    */
     /* =================================================================================== */
@@ -273,8 +297,10 @@ public class ChatWindow {
         stage.setTitle(MessageFormat.format(b.getString("chat.window.title"), mensaje.getSender()));
 
         lblDateKey.setText(b.getString("chat.header.date"));
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-        lblDateValue.setText(mensaje.getFechaHora().format(fmt));
+        // SOLO FECHA, SIN HORA - Formato dd/MM/yyyy
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        lblDateValue.setText(LocalDateTime.now().format(fmt)); // Cambiado a solo fecha
+
         lblSenderKey.setText(b.getString("chat.header.from"));
         lblSenderValue.setText(mensaje.getSender());
 
@@ -292,9 +318,62 @@ public class ChatWindow {
     }
 
     /* =================================================================================== */
+    /*                              GESTIÓN DE MENSAJES EN CHAT                          */
+    /* =================================================================================== */
+    private void addMessageToChat(String sender, String content, boolean isCurrentUser) {
+        // Contenedor principal del mensaje (hora + rectángulo)
+        VBox messageWithTime = new VBox(2); // Espacio vertical entre hora y mensaje
+        messageWithTime.setMaxWidth(500);
+
+        // Hora del mensaje (justo encima del rectángulo)
+        Label timeLabel = new Label(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+        timeLabel.getStyleClass().add("chat-time-label");
+        HBox timeContainer = new HBox();
+        timeContainer.getChildren().add(timeLabel);
+
+        // Rectángulo del mensaje (solo contenido)
+        VBox messageContainer = new VBox();
+        messageContainer.setPadding(new Insets(10));
+        messageContainer.getStyleClass().add("message-box");
+
+        // Contenido del mensaje
+        Label messageContent = new Label(content);
+        messageContent.setWrapText(true);
+        messageContent.getStyleClass().add("chat-message-content");
+        messageContainer.getChildren().add(messageContent);
+
+        // Añadimos hora y mensaje al contenedor principal
+        messageWithTime.getChildren().addAll(timeContainer, messageContainer);
+
+        // Posicionamiento según quién envió el mensaje
+        HBox messageRow = new HBox();
+        if (isCurrentUser) {
+            // Mensajes del usuario actual a la derecha
+            timeContainer.setAlignment(Pos.CENTER_RIGHT);
+            messageContainer.getStyleClass().add("message-sent");
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            messageRow.getChildren().addAll(spacer, messageWithTime);
+        } else {
+            // Mensajes recibidos a la izquierda
+            timeContainer.setAlignment(Pos.CENTER_LEFT);
+            messageContainer.getStyleClass().add("message-received");
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            messageRow.getChildren().addAll(messageWithTime, spacer);
+        }
+
+        chatArea.getChildren().add(messageRow);
+
+        // Scroll automático al último mensaje
+        Platform.runLater(() -> {
+            chatScrollPane.setVvalue(1.0);
+        });
+    }
+
+    /* =================================================================================== */
     /*                               ENVÍO DE RESPUESTA                                   */
     /* =================================================================================== */
-
     private void sendReply(String plainText) {
         ResourceBundle b = LocaleManager.bundle();
 
@@ -364,8 +443,15 @@ public class ChatWindow {
                             try {
                                 MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
                                 MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));
-                                pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.alert.info.sent"));
-                                stage.close();
+
+                                // Agregar el mensaje enviado al chat
+                                addMessageToChat(currentUser, plainText, true);
+
+                                // Limpiar el área de texto y archivos seleccionados
+                                txtReply.clear();
+                                selectedFiles.clear();
+
+                                // Mostrar mensaje de éxito
                             } catch (Exception ex) {
                                 pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.serverResponse"));
                             }
@@ -385,7 +471,6 @@ public class ChatWindow {
         // 3) Finalmente, lanzamos el Task en el pool de background
         MainApp.Background.POOL.submit(buildTask);
     }
-
 
     private void updateIcons() {
         /* Candado */
@@ -417,7 +502,7 @@ public class ChatWindow {
 
     private void downloadAttachment(AdjuntoDTO a) {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Guardar " + a.getFilename());
+        chooser.setTitle(LocaleManager.bundle().getString("chat.attach.save") + " " + a.getFilename());
         chooser.setInitialFileName(a.getFilename());
         File dest = chooser.showSaveDialog(stage);
         if (dest == null) return;

@@ -294,12 +294,47 @@
 }
 
 /* nueva clase para el valor (remitente, asunto, fecha) */
-.chat-header-value {
-    -fx-font-weight: bold;
-}
+/* Ajuste para el encabezado */
 
-/* subimos un punto los encabezados */
 .chat-header-line,
 .chat-header-date {
-    -fx-font-size: 14px;          /* antes 14 / 13 px */
+    -fx-font-size: 13px;
+    -fx-padding: 0 0 2px 0;
+}
+
+.chat-header-value {
+    -fx-font-weight: bold;
+    -fx-padding: 0 0 2px 5px;
+}}
+
+/* Área del chat con borde blanco */
+/* Área del chat con borde blanco */
+.chat-area {
+    -fx-border-color: #ffffff;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+}
+
+/* Estilo base para todos los mensajes */
+.message-box {
+    -fx-border-color: #ffffff;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-padding: 10px;
+}
+
+/* Mensajes enviados (gris oscuro flojo) */
+.message-sent {
+    -fx-background-color: #424242;
+}
+
+/* Mensajes recibidos */
+.message-received {
+    -fx-background-color: #303030;
+}
+
+/* Etiqueta de hora */
+.chat-time-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: #aaaaaa;
 }
