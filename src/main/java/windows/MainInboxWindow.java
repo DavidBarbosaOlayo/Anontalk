@@ -204,6 +204,18 @@ public class MainInboxWindow extends Application {
             }
         });
 
+        idiomaMenu.getItems().get(0).setOnAction(e -> {
+            LocaleManager.setLocale(new Locale("es", "ES"));
+        });
+
+        idiomaMenu.getItems().get(1).setOnAction(e -> {
+            LocaleManager.setLocale(new Locale("ca", "ES"));
+        });
+
+        idiomaMenu.getItems().get(2).setOnAction(e -> {
+            LocaleManager.setLocale(Locale.ENGLISH);
+        });
+
         /* ───────── Top Bar ───────── */
         HBox leftBox = new HBox(10, ivLogo, lblWelcome);
         leftBox.setAlignment(Pos.CENTER_LEFT);

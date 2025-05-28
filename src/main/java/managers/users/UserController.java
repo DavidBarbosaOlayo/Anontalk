@@ -7,6 +7,8 @@ import security.passwords.ChangePasswordDTO;
 import security.passwords.ForgotPasswordDTO;
 import security.passwords.ResetPasswordDTO;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -91,6 +93,17 @@ public class UserController {
     @PostMapping("/change-theme")
     public ResponseEntity<Void> changeTheme(@RequestBody ChangeThemeDTO dto) {
         svc.changeTheme(dto.getUsername(), dto.getTheme());
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{username}/language")
+    public ResponseEntity<String> getLanguage(@PathVariable String username) {
+        return ResponseEntity.ok(svc.getLanguage(username));
+    }
+
+    @PostMapping("/change-language")
+    public ResponseEntity<Void> changeLanguage(@RequestBody Map<String, String> request) {
+        svc.changeLanguage(request.get("username"), request.get("language"));
         return ResponseEntity.ok().build();
     }
 

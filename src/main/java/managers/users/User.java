@@ -33,6 +33,9 @@ public class User {
 
     @Column(name = "theme")
     private String theme = "light";
+
+    @Column(name = "language", length = 5)
+    private String language = "en";
     // ← getters/setters para todos los campos
 
     public Long getId() { return id; }
@@ -61,4 +64,7 @@ public class User {
 
     public String getTheme() { return theme; }
     public void setTheme(String theme) { this.theme = theme; }
+
+    public String getLanguage() { return language; }
+    public void setLanguage(String language) { this.language = language; }
 }

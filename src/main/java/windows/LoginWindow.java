@@ -26,6 +26,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import security.encryption.AESUtils;
 import security.encryption.KeyManager;
 import security.encryption.RSAUtils;
+import utils.LocaleManager;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -242,6 +243,9 @@ public class LoginWindow extends Application {
             PublicKey pubKey = RSAUtils.publicKeyFromBase64(pubB64);
             KeyManager.setPrivateKey(privKey);
             KeyManager.setPublicKey(pubKey);
+
+            LocaleManager.initializeForUser(user);
+
 
             if (requireChange) {
                 Platform.runLater(() -> showForceChangeDialog(user, pwd));

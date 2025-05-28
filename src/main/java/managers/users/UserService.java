@@ -270,4 +270,17 @@ public class UserService {
                 .orElse("light");
     }
 
+    public String getLanguage(String username) {
+        return repo.findByUsername(username)
+                .map(User::getLanguage)
+                .orElse("en");
+    }
+
+    public void changeLanguage(String username, String language) {
+        User user = repo.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        user.setLanguage(language);
+        repo.save(user);
+    }
+
 }
