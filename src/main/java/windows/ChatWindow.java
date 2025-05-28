@@ -65,6 +65,7 @@ public class ChatWindow {
 
     private VBox chatArea;
     private ScrollPane chatScrollPane;
+    private VBox replyBox; // Declarada aquí para que sea accesible
 
     /* ---------------- iconos ---------------- */
     private final Image icoEncrypt = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifrado.png")), 36, 36, true, true);
@@ -127,10 +128,9 @@ public class ChatWindow {
         chatScrollPane.getStyleClass().add("chat-area"); // Borde del área de chat
 
         /* ─── SECCIÓN DE ADJUNTOS (recibidos) ───────────────────────── */
-        /* ─── SECCIÓN DE ADJUNTOS (recibidos) ───────────────────────── */
         VBox attachmentsSection = new VBox(4);
 
-// Manejo seguro de recursos internacionalizados
+        // Manejo seguro de recursos internacionalizados
         String loadingText;
         try {
             loadingText = b.getString("common.info") + ": " + b.getString("chat.attachments.loading");
@@ -141,7 +141,7 @@ public class ChatWindow {
 
         attachmentsSection.getChildren().add(loading);
 
-// Carga asíncrona de adjuntos
+        // Carga asíncrona de adjuntos
         HttpRequest attReq = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:8080/api/messages/" + mensaje.getId() + "/attachments"))
                 .GET().build();
@@ -237,7 +237,6 @@ public class ChatWindow {
         btnSend = new Button();
         btnClose = new Button();
         btnSend.setOnAction(e -> sendReply(txtReply.getText().trim()));
-        btnClose.setOnAction(e -> stage.close());
 
         Region stretch = new Region();
         HBox.setHgrow(stretch, Priority.ALWAYS);
@@ -246,9 +245,24 @@ public class ChatWindow {
         bottomBar.setAlignment(Pos.CENTER_LEFT);
         bottomBar.setPadding(new Insets(10));
 
-        VBox replyBox = new VBox(compose, bottomBar);
+        // Declarar replyBox aquí para que sea accesible
+        replyBox = new VBox(compose, bottomBar);
         replyBox.setVisible(false);
         replyBox.setManaged(false);
+
+        // Ahora que replyBox está declarada, podemos configurar el botón de cancelar
+        btnClose.setOnAction(e -> {
+            // Ocultar el área de respuesta
+            replyBox.setVisible(false);
+            replyBox.setManaged(false);
+
+            // Mostrar nuevamente el botón de responder
+            btnResponder.setVisible(true);
+            btnResponder.setManaged(true);
+
+            // Limpiar los archivos seleccionados
+            selectedFiles.clear();
+        });
 
         btnResponder = new Button(b.getString("chat.button.reply"));
         btnResponder.getStyleClass().add("primary-button");
@@ -309,7 +323,7 @@ public class ChatWindow {
 
         txtReply.setPromptText(b.getString("chat.prompt.reply"));
         btnSend.setText(b.getString("chat.button.send"));
-        btnClose.setText(b.getString("chat.button.close"));
+        btnClose.setText(b.getString("chat.button.cancel"));
 
         /* controles añadidos */
         lblEncryptState.setText(b.getString(encrypt ? "chat.encrypt.on" : "chat.encrypt.off"));
@@ -377,7 +391,7 @@ public class ChatWindow {
     private void sendReply(String plainText) {
         ResourceBundle b = LocaleManager.bundle();
 
-        if (plainText.isEmpty()) {
+        if (plainText.isEmpty() && selectedFiles.isEmpty()) {
             pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.emptyMessage"));
             return;
         }
@@ -395,16 +409,18 @@ public class ChatWindow {
                 dto.setAsunto(mensaje.getAsunto());
 
                 // Texto (cifrado o claro)
-                if (encrypt) {
-                    PublicKey destPk = fetchDestPublicKey(destinatario);
-                    var p = HybridCrypto.encrypt(plainText, destPk);
-                    dto.setCipherTextBase64(p.cipherB64());
-                    dto.setEncKeyBase64(p.encKeyB64());
-                    dto.setIvBase64(p.ivB64());
-                } else {
-                    dto.setCipherTextBase64(Base64.getEncoder().encodeToString(plainText.getBytes(StandardCharsets.UTF_8)));
-                    dto.setEncKeyBase64(null);
-                    dto.setIvBase64(null);
+                if (!plainText.isEmpty()) {
+                    if (encrypt) {
+                        PublicKey destPk = fetchDestPublicKey(destinatario);
+                        var p = HybridCrypto.encrypt(plainText, destPk);
+                        dto.setCipherTextBase64(p.cipherB64());
+                        dto.setEncKeyBase64(p.encKeyB64());
+                        dto.setIvBase64(p.ivB64());
+                    } else {
+                        dto.setCipherTextBase64(Base64.getEncoder().encodeToString(plainText.getBytes(StandardCharsets.UTF_8)));
+                        dto.setEncKeyBase64(null);
+                        dto.setIvBase64(null);
+                    }
                 }
 
                 // Adjuntos
@@ -445,13 +461,20 @@ public class ChatWindow {
                                 MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));
 
                                 // Agregar el mensaje enviado al chat
-                                addMessageToChat(currentUser, plainText, true);
+                                if (!plainText.isEmpty()) {
+                                    addMessageToChat(currentUser, plainText, true);
+                                }
 
                                 // Limpiar el área de texto y archivos seleccionados
                                 txtReply.clear();
                                 selectedFiles.clear();
 
-                                // Mostrar mensaje de éxito
+                                // Cerrar el área de respuesta
+                                replyBox.setVisible(false);
+                                replyBox.setManaged(false);
+                                btnResponder.setVisible(true);
+                                btnResponder.setManaged(true);
+
                             } catch (Exception ex) {
                                 pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.serverResponse"));
                             }
