@@ -1,5 +1,6 @@
 package managers.mensajes;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import managers.mensajes.adjuntos.AdjuntoDTO;
@@ -9,7 +10,7 @@ public class Mensaje {
     private String sender;
     private String asunto;
     private String content;
-    // ► Nuevo:
+    private LocalDateTime fechaHora;
     private List<AdjuntoDTO> adjuntos;
 
     public Mensaje() {
@@ -24,12 +25,13 @@ public class Mensaje {
     }
 
     // ► Nuevo constructor con adjuntos
-    public Mensaje(Long id, String sender, String asunto, String content, List<AdjuntoDTO> adjuntos) {
+    public Mensaje(Long id, String sender, String asunto, String content, List<AdjuntoDTO> adjuntos,LocalDateTime fechaHora) {
         this.id = id;
         this.sender = sender;
         this.asunto = asunto;
         this.content = content;
         this.adjuntos = adjuntos;
+        this.fechaHora = fechaHora;
     }
 
     // ─── Getters & setters ───────────────────────────────────────────────────
@@ -73,4 +75,6 @@ public class Mensaje {
     public void setAdjuntos(List<AdjuntoDTO> adjuntos) {
         this.adjuntos = adjuntos;
     }
+
+    public LocalDateTime getFechaHora() { return fechaHora; }
 }

@@ -9,6 +9,7 @@ import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
+import javafx.concurrent.Task;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -335,38 +336,54 @@ public class MainInboxWindow extends Application {
     }
 
     private void refreshInbox() {
-        try {
-            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/inbox/" + currentUser)).GET().build();
-            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
-            List<MensajeDTO> inbox = mapper.readValue(res.body(), new TypeReference<>() {
-            });
-            Platform.runLater(() -> MessageStore.inboxMessages.setAll(inbox.stream().map(this::mapInbox).toList()));
-        } catch (Exception ignored) {
-        }
+        javafx.concurrent.Task<List<MensajeDTO>> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected List<MensajeDTO> call() throws Exception {
+                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/inbox/" + currentUser)).GET().build();
+                HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+                return mapper.readValue(res.body(), new com.fasterxml.jackson.core.type.TypeReference<>() {
+                });
+            }
+        };
+        task.setOnSucceeded(evt -> MessageStore.inboxMessages.setAll(task.getValue().stream().map(this::mapInbox).toList()));
+        task.setOnFailed(evt -> {
+            // opcional: log.error("Error refrescando inbox", task.getException());
+        });
+        MainApp.Background.POOL.submit(task);
     }
 
+
     private void refreshSent() {
-        try {
-            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/sent/" + currentUser)).GET().build();
-            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
-            List<MensajeDTO> sent = mapper.readValue(res.body(), new TypeReference<>() {
-            });
+        Task<List<MensajeDTO>> task = new Task<>() {
+            @Override
+            protected List<MensajeDTO> call() throws Exception {
+                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/sent/" + currentUser)).GET().build();
+                HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+                return mapper.readValue(res.body(), new TypeReference<>() {
+                });
+            }
+        };
+        task.setOnSucceeded(evt -> {
+            List<MensajeDTO> sent = task.getValue();
+            // actualizar en el hilo FX
             Platform.runLater(() -> MessageStore.sentMessages.setAll(sent.stream().map(this::mapSent).toList()));
-        } catch (Exception ignored) {
-        }
+        });
+        task.setOnFailed(evt -> {
+            // opcional: log.error("Error refrescando sent", task.getException());
+        });
+        MainApp.Background.POOL.submit(task);
     }
+
 
     private Mensaje mapInbox(MensajeDTO dto) {
         String plain = decodeBody(dto);
-        // incluimos adjuntos directamente desde el DTO
-        return new Mensaje(dto.getId(), dto.getRemitente(), dto.getAsunto(), plain, dto.getAdjuntos()  // lista de AdjuntoDTO
-        );
+        return new Mensaje(dto.getId(), dto.getRemitente(), dto.getAsunto(), plain, dto.getAdjuntos(), dto.getFechaHora());
     }
 
 
     private Mensaje mapSent(MensajeDTO dto) {
         String plain = decodeBody(dto);
-        return new Mensaje(dto.getId(), dto.getDestinatario(), dto.getAsunto(), plain, dto.getAdjuntos());
+        return new Mensaje(dto.getId(), dto.getDestinatario(), dto.getAsunto(), plain, dto.getAdjuntos(), dto.getFechaHora());
     }
 
 

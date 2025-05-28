@@ -112,18 +112,33 @@ public class ChatWindow {
 
         /* ─── SECCIÓN DE ADJUNTOS (recibidos) ───────────────────────── */
         VBox attachmentsSection = new VBox(4);
-        if (mensaje.getAdjuntos() != null && !mensaje.getAdjuntos().isEmpty()) {
+        Label loading = new Label(b.getString("common.info") + ": loading attachments…");
+        attachmentsSection.getChildren().add(loading);
+
+        // Carga asíncrona de adjuntos
+        HttpRequest attReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/" + mensaje.getId() + "/attachments")).GET().build();
+        http.sendAsync(attReq, HttpResponse.BodyHandlers.ofString()).thenApply(HttpResponse::body).thenApply(body -> {
+            try {
+                return mapper.readValue(body, new com.fasterxml.jackson.core.type.TypeReference<List<AdjuntoDTO>>() {
+                });
+            } catch (Exception e) {
+                return List.<AdjuntoDTO>of();
+            }
+        }).thenAccept(adjList -> Platform.runLater(() -> {
+            attachmentsSection.getChildren().clear();
+            if (adjList.isEmpty()) {
+                return;
+            }
             Label lblAtt = new Label(b.getString("chat.header.attachments"));
             lblAtt.getStyleClass().add("chat-header-line");
             attachmentsSection.getChildren().add(lblAtt);
-
-            for (AdjuntoDTO a : mensaje.getAdjuntos()) {
+            for (AdjuntoDTO a : adjList) {
                 Button btnFile = new Button(a.getFilename());
                 btnFile.getStyleClass().add("tool-button");
                 btnFile.setOnAction(evt -> downloadAttachment(a));
                 attachmentsSection.getChildren().add(btnFile);
             }
-        }
+        }));
 
         /* ───────── MENSAJE RECIBIDO ───────── */
         Label lblBody = new Label(mensaje.getContent());
@@ -164,10 +179,9 @@ public class ChatWindow {
 
         btnAttach = new Button(null, new ImageView(icoAttach));
         btnAttach.getStyleClass().add("icon-button");
-        // ¡Aquí está el manejador que faltaba!
         btnAttach.setOnAction(e -> {
             FileChooser chooser = new FileChooser();
-            chooser.setTitle(b.getString("chat.attach.select")); // añade esta clave en tus properties
+            chooser.setTitle(b.getString("chat.attach.select"));
             List<File> files = chooser.showOpenMultipleDialog(stage);
             if (files != null) {
                 selectedFiles.addAll(files);
@@ -260,8 +274,7 @@ public class ChatWindow {
 
         lblDateKey.setText(b.getString("chat.header.date"));
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-        lblDateValue.setText(LocalDateTime.now().format(fmt));
-
+        lblDateValue.setText(mensaje.getFechaHora().format(fmt));
         lblSenderKey.setText(b.getString("chat.header.from"));
         lblSenderValue.setText(mensaje.getSender());
 
@@ -328,13 +341,7 @@ public class ChatWindow {
                         var p = HybridCrypto.encrypt(fileB64, destPk);
                         adjuntosDto.add(new AdjuntoDTO(filename, mimeType, p.cipherB64(), p.encKeyB64(), p.ivB64()));
                     } else {
-                        adjuntosDto.add(new AdjuntoDTO(
-                                filename,
-                                mimeType,
-                                Base64.getEncoder().encodeToString(fileBytes),
-                                null,
-                                null
-                        ));
+                        adjuntosDto.add(new AdjuntoDTO(filename, mimeType, Base64.getEncoder().encodeToString(fileBytes), null, null));
                     }
                 }
                 dto.setAdjuntos(adjuntosDto);
@@ -348,47 +355,32 @@ public class ChatWindow {
             MensajeDTO dto = buildTask.getValue();
             try {
                 String json = mapper.writeValueAsString(dto);
-                var request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/messages/send"))
-                        .header("Content-Type","application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(json))
-                        .build();
+                var request = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
 
-                http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                        .thenAccept(resp -> {
-                            if (resp.statusCode() == 200) {
-                                // parsear respuesta y actualizar UI
-                                Platform.runLater(() -> {
-                                    try {
-                                        MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
-                                        MessageStore.sentMessages.add(
-                                                new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText)
-                                        );
-                                        pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.alert.info.sent"));
-                                        stage.close();
-                                    } catch (Exception ex) {
-                                        pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.serverResponse"));
-                                    }
-                                });
-                            } else {
-                                Platform.runLater(() ->
-                                        pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.save"))
-                                );
+                http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
+                    if (resp.statusCode() == 200) {
+                        // parsear respuesta y actualizar UI
+                        Platform.runLater(() -> {
+                            try {
+                                MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
+                                MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));
+                                pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.alert.info.sent"));
+                                stage.close();
+                            } catch (Exception ex) {
+                                pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.serverResponse"));
                             }
                         });
+                    } else {
+                        Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.save")));
+                    }
+                });
 
             } catch (Exception ex) {
-                Platform.runLater(() ->
-                        pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.encrypt"))
-                );
+                Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.encrypt")));
             }
         });
 
-        buildTask.setOnFailed(evt ->
-                Platform.runLater(() ->
-                        pop.mostrarAlertaError(b.getString("common.error"), buildTask.getException().getMessage())
-                )
-        );
+        buildTask.setOnFailed(evt -> Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), buildTask.getException().getMessage())));
 
         // 3) Finalmente, lanzamos el Task en el pool de background
         MainApp.Background.POOL.submit(buildTask);
