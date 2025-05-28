@@ -17,6 +17,7 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import managers.PopUpInfo;
+import managers.users.UserService;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -51,17 +52,21 @@ public class LoginWindow extends Application {
     private final ObjectMapper mapper = new ObjectMapper();
     private Stage primaryStage;
     private ResourceBundle b;
+    private final UserService svc;
 
     /**
      * Recibe el contexto de Spring arrancado en el splash
      */
     public LoginWindow(ConfigurableApplicationContext ctx) {
         this.springCtx = ctx;
+        this.svc = ctx.getBean(UserService.class); // Obtener el servicio del contexto
+
     }
 
     public static void main(String[] args) {
         // Para ejecutar standalone si se desea
         SpringApplication.run(LoginWindow.class, args);
+
     }
 
     @Override
@@ -228,6 +233,8 @@ public class LoginWindow extends Application {
             String pubB64 = root.get("publicKeyBase64").asText();
             String privEnc = root.get("privateKeyEncryptedBase64").asText();
             boolean requireChange = root.get("requirePasswordChange").asBoolean();
+            String savedTheme = svc.getTheme(user);
+            ThemeManager.getInstance().setTheme(savedTheme);
 
             SecretKey aesKey = deriveAesKeyFromPassword(pwd, salt);
             String privB64 = AESUtils.decrypt(privEnc, aesKey);

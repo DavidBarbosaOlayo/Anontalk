@@ -267,29 +267,6 @@ public class MainInboxWindow extends Application {
         ((Label) tv.getPlaceholder()).setText(inbox ? b.getString("table.placeholder.inbox") : b.getString("table.placeholder.sent"));
     }
 
-    private void setDarkTheme() {
-        ThemeManager tm = ThemeManager.getInstance();
-        tm.setTheme("dark");
-        darkTheme = true;
-        scene.getStylesheets().setAll(tm.getCss());
-        profileIconView.setImage(userIconDark);
-        settingsIconView.setImage(settingsIconDark);
-        newMsgIconView.setImage(newMsgIconDark);
-        logoutIconView.setImage(logoutIconDark);
-        trashButtons.forEach(b -> b.setGraphic(new ImageView(trashIconDark)));
-    }
-
-    private void setLightTheme() {
-        ThemeManager tm = ThemeManager.getInstance();
-        tm.setTheme("light");
-        darkTheme = false;
-        scene.getStylesheets().setAll(tm.getCss());
-        profileIconView.setImage(userIconLight);
-        settingsIconView.setImage(settingsIconLight);
-        newMsgIconView.setImage(newMsgIconLight);
-        logoutIconView.setImage(logoutIconLight);
-        trashButtons.forEach(b -> b.setGraphic(new ImageView(trashIconLight)));
-    }
 
     private TableView<Mensaje> createTable(boolean inbox) {
         TableView<Mensaje> table = new TableView<>(inbox ? MessageStore.inboxMessages : MessageStore.sentMessages);
@@ -607,5 +584,31 @@ public class MainInboxWindow extends Application {
 
     private static ResourceBundle bundle() {
         return LocaleManager.bundle();
+    }
+
+    private void setDarkTheme() {
+        ThemeManager.getInstance().setTheme("dark", currentUser);
+        actualizarTemaUI();
+    }
+
+    private void setLightTheme() {
+        ThemeManager.getInstance().setTheme("light", currentUser);
+        actualizarTemaUI();
+    }
+
+    private void actualizarTemaUI() {
+        boolean isDark = ThemeManager.getInstance().getTheme().equals("dark");
+
+        // Actualizar iconos
+        profileIconView.setImage(isDark ? userIconDark : userIconLight);
+        settingsIconView.setImage(isDark ? settingsIconDark : settingsIconLight);
+        newMsgIconView.setImage(isDark ? newMsgIconDark : newMsgIconLight);
+        logoutIconView.setImage(isDark ? logoutIconDark : logoutIconLight);
+
+        // Actualizar botones de papelera
+        trashButtons.forEach(b -> b.setGraphic(new ImageView(isDark ? trashIconDark : trashIconLight)));
+
+        // Actualizar CSS
+        scene.getStylesheets().setAll(ThemeManager.getInstance().getCss());
     }
 }

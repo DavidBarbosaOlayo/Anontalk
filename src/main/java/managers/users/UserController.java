@@ -82,5 +82,40 @@ public class UserController {
         svc.deleteAccount(username);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{username}/theme")
+    public ResponseEntity<String> getTheme(@PathVariable String username) {
+        return ResponseEntity.ok(svc.getTheme(username));
+    }
+
+    @PostMapping("/change-theme")
+    public ResponseEntity<Void> changeTheme(@RequestBody ChangeThemeDTO dto) {
+        svc.changeTheme(dto.getUsername(), dto.getTheme());
+        return ResponseEntity.ok().build();
+    }
+
+    // DTO para cambio de tema
+    public static class ChangeThemeDTO {
+        private String username;
+        private String theme;
+        // getters y setters
+
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getTheme() {
+            return theme;
+        }
+
+        public void setTheme(String theme) {
+            this.theme = theme;
+        }
+    }
 }
 

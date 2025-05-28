@@ -257,4 +257,17 @@ public class UserService {
         repo.delete(u);
     }
 
+    public void changeTheme(String username, String theme) {
+        User u = repo.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        u.setTheme(theme);
+        repo.save(u);
+    }
+
+    public String getTheme(String username) {
+        return repo.findByUsername(username)
+                .map(User::getTheme)
+                .orElse("light");
+    }
+
 }

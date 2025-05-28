@@ -39,7 +39,7 @@ public class SplashWindow {
         pi.setPrefSize(90, 90);            // ⬆ tamaño ligeramente mayor
 
         /* ---------- Texto ---------- */
-        Label lbl = new Label("Inicializando Anontalk...");
+        Label lbl = new Label("Starting Anontalk...");
         lbl.setStyle("-fx-font-size: 16px; -fx-text-fill: #333;");   // ⬆ font-size
 
         /* ---------- Layout ---------- */
