@@ -12,27 +12,30 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import managers.PopUpInfo;
 import managers.mensajes.Mensaje;
 import managers.mensajes.MensajeDTO;
 import managers.mensajes.MessageStore;
+import managers.mensajes.adjuntos.AdjuntoDTO;
 import security.encryption.HybridCrypto;
+import security.encryption.KeyManager;
 import security.encryption.RSAUtils;
 import utils.LocaleManager;
 
+import java.io.File;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
-import java.util.Objects;
-import java.util.ResourceBundle;
+import java.util.*;
 
 public class ChatWindow {
 
@@ -57,6 +60,8 @@ public class ChatWindow {
     private Button btnEncrypt, btnAttach, btnSend, btnClose, btnResponder;
     private MenuItem miTimerOff;
     private boolean encrypt = false;     // SIN cifrar predeterminado
+    private List<File> selectedFiles = new ArrayList<>();
+
 
     /* ---------------- iconos ---------------- */
     private final Image icoEncrypt = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifrado.png")), 36, 36, true, true);
@@ -90,7 +95,6 @@ public class ChatWindow {
         lblSubjectKey = new Label();
         lblSubjectValue = new Label();
 
-        // estilos
         lblDateKey.getStyleClass().add("chat-header-date");
         lblDateValue.getStyleClass().addAll("chat-header-date", "chat-header-value");
         lblSenderKey.getStyleClass().add("chat-header-line");
@@ -101,46 +105,53 @@ public class ChatWindow {
         HBox dateBox = new HBox(4, lblDateKey, lblDateValue);
         HBox senderBox = new HBox(4, lblSenderKey, lblSenderValue);
         HBox subjectBox = new HBox(4, lblSubjectKey, lblSubjectValue);
-
         VBox headerBox = new VBox(2, dateBox, senderBox, subjectBox);
         headerBox.setAlignment(Pos.CENTER_LEFT);
         headerBox.setPadding(new Insets(0, 0, 10, 0));
+
+        /* ─── SECCIÓN DE ADJUNTOS (recibidos) ───────────────────────── */
+        VBox attachmentsSection = new VBox(4);
+        if (mensaje.getAdjuntos() != null && !mensaje.getAdjuntos().isEmpty()) {
+            Label lblAtt = new Label(b.getString("chat.header.attachments"));
+            lblAtt.getStyleClass().add("chat-header-line");
+            attachmentsSection.getChildren().add(lblAtt);
+
+            for (AdjuntoDTO a : mensaje.getAdjuntos()) {
+                Button btnFile = new Button(a.getFilename());
+                btnFile.getStyleClass().add("tool-button");
+                btnFile.setOnAction(evt -> downloadAttachment(a));
+                attachmentsSection.getChildren().add(btnFile);
+            }
+        }
 
         /* ───────── MENSAJE RECIBIDO ───────── */
         Label lblBody = new Label(mensaje.getContent());
         lblBody.setWrapText(true);
         lblBody.getStyleClass().add("chat-message-body");
-
         ScrollPane scroll = new ScrollPane(lblBody);
         scroll.setFitToWidth(true);
 
-        /* ========== ÁREA DE RESPUESTA (oculta al inicio) ========== */
-
-        /* ─── ICONOS / HERRAMIENTAS ─── */
+        /* ========== ÁREA DE RESPUESTA (oculta) ========== */
         btnEncrypt = new Button(null, new ImageView(icoEncrypt));
         btnEncrypt.getStyleClass().add("icon-button");
         lblEncryptState = new Label(b.getString("chat.encrypt.off"));
         lblEncryptState.getStyleClass().add("tool-label");
         btnEncrypt.setOnAction(e -> {
-            encrypt = !encrypt;    // solo cambia estado lógico
+            encrypt = !encrypt;
             lblEncryptState.setText(LocaleManager.bundle().getString(encrypt ? "chat.encrypt.on" : "chat.encrypt.off"));
-            updateIcons();         // iconos centralizados
+            updateIcons();
         });
 
         mbTimer = new MenuButton(null, new ImageView(icoTimer));
         mbTimer.getStyleClass().add("icon-button");
         lblTimerState = new Label();
         lblTimerState.getStyleClass().add("tool-label");
-
-        /* opción “Sin tiempo” */
         miTimerOff = new MenuItem(b.getString("chat.timer.off"));
         miTimerOff.setOnAction(ev -> {
             lblTimerState.setText("");
             updateIcons();
         });
         mbTimer.getItems().add(miTimerOff);
-
-        /* resto de opciones */
         for (String o : new String[]{"30 s", "1 min", "5 min", "30 min"}) {
             MenuItem it = new MenuItem(o);
             it.setOnAction(ev -> {
@@ -152,6 +163,16 @@ public class ChatWindow {
 
         btnAttach = new Button(null, new ImageView(icoAttach));
         btnAttach.getStyleClass().add("icon-button");
+        // ¡Aquí está el manejador que faltaba!
+        btnAttach.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle(b.getString("chat.attach.select")); // añade esta clave en tus properties
+            List<File> files = chooser.showOpenMultipleDialog(stage);
+            if (files != null) {
+                selectedFiles.addAll(files);
+                pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.attach.added").replace("{0}", String.valueOf(files.size())));
+            }
+        });
 
         GridPane tools = new GridPane();
         tools.setHgap(14);
@@ -168,14 +189,11 @@ public class ChatWindow {
         tools.add(lblEncryptState, 0, 1);
         tools.add(lblTimerState, 1, 1);
 
-        /* ─── REDACTOR ─── */
         txtReply = new TextArea();
         txtReply.setPrefRowCount(4);
         txtReply.getStyleClass().add("chat-textarea");
-
         VBox compose = new VBox(6, txtReply);
 
-        /* ─── BOTONES ENVIAR / CANCELAR ─── */
         btnSend = new Button();
         btnClose = new Button();
         btnSend.setOnAction(e -> sendReply(txtReply.getText().trim()));
@@ -188,12 +206,10 @@ public class ChatWindow {
         bottomBar.setAlignment(Pos.CENTER_LEFT);
         bottomBar.setPadding(new Insets(10));
 
-        /* ---- Contenedor que se mostrará al pulsar “Responder” ---- */
         VBox replyBox = new VBox(compose, bottomBar);
         replyBox.setVisible(false);
-        replyBox.setManaged(false);          // excluido del layout mientras está oculto
+        replyBox.setManaged(false);
 
-        /* ========== BOTÓN “RESPONDER” (visible al inicio) ========== */
         btnResponder = new Button(b.getString("chat.button.reply"));
         btnResponder.getStyleClass().add("primary-button");
         btnResponder.setOnAction(e -> {
@@ -204,28 +220,27 @@ public class ChatWindow {
             txtReply.requestFocus();
         });
 
-        /* ───────── ROOT / ESCENA ───────── */
-        VBox.setMargin(btnResponder, new Insets(10));
         VBox bottomArea = new VBox(btnResponder, replyBox);
         bottomArea.setAlignment(Pos.CENTER_RIGHT);
         bottomArea.setSpacing(10);
         bottomArea.setPadding(new Insets(10, 0, 0, 0));
 
-        BorderPane root = new BorderPane(scroll, headerBox, null, bottomArea, null);
+        VBox topContent = new VBox(headerBox, attachmentsSection);
+        topContent.setPadding(new Insets(10, 0, 10, 0));
+
+        BorderPane root = new BorderPane(scroll, topContent, null, bottomArea, null);
         root.setPadding(new Insets(10));
         root.getStyleClass().add("chat-root");
 
         Scene scene = new Scene(root, 700, 500);
         ThemeManager tm = ThemeManager.getInstance();
         scene.getStylesheets().setAll(tm.getCss());
-        /*  🔄 cambio de tema -> refresco CSS + iconos */
         tm.themeProperty().addListener((o, oldT, n) -> {
             scene.getStylesheets().setAll(tm.getCss());
             updateIcons();
         });
 
-        updateIcons();          // primera sincronización visual
-
+        updateIcons();
         LocaleManager.localeProperty().addListener((o, oldL, n) -> refreshTexts());
         refreshTexts();
 
@@ -268,7 +283,7 @@ public class ChatWindow {
     private void sendReply(String plainText) {
         ResourceBundle b = LocaleManager.bundle();
 
-        /* 0) Validación rápida ------------------------------------------------------- */
+        // 0) Validación rápida
         if (plainText.isEmpty()) {
             pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.emptyMessage"));
             return;
@@ -276,41 +291,63 @@ public class ChatWindow {
         String destinatario = mensaje.getSender();
 
         try {
-            /* 1) Construir DTO ------------------------------------------------------- */
+            // 1) Construir DTO de mensaje
             MensajeDTO dto = new MensajeDTO();
             dto.setRemitente(currentUser);
             dto.setDestinatario(destinatario);
             dto.setAsunto(mensaje.getAsunto());
 
+            // 1.1) Texto (cifrado o en claro)
             if (encrypt) {
                 PublicKey destPk = fetchDestPublicKey(destinatario);
                 HybridCrypto.HybridPayload p = HybridCrypto.encrypt(plainText, destPk);
-
                 dto.setCipherTextBase64(p.cipherB64());
                 dto.setEncKeyBase64(p.encKeyB64());
                 dto.setIvBase64(p.ivB64());
-            } else {                                        // 📨  ENVIAR EN CLARO
+            } else {
                 String b64 = Base64.getEncoder().encodeToString(plainText.getBytes(StandardCharsets.UTF_8));
-
                 dto.setCipherTextBase64(b64);
-                dto.setEncKeyBase64(null);   // ← señal de “no cifrado”
+                dto.setEncKeyBase64(null);
                 dto.setIvBase64(null);
             }
 
-            /* 2) POST al backend ------------------------------------------------------ */
-            String json = mapper.writeValueAsString(dto);
+            // 1.2) Adjuntos
+            List<AdjuntoDTO> adjuntosDto = new ArrayList<>();
+            for (File file : selectedFiles) {
+                byte[] fileBytes = Files.readAllBytes(file.toPath());
+                String filename = file.getName();
+                String mimeType = Files.probeContentType(file.toPath());
 
+                String cipherB64, encKeyB64, ivB64;
+                if (encrypt) {
+                    // cifrar el contenido Base64 del fichero
+                    PublicKey destPk = fetchDestPublicKey(destinatario);
+                    String fileBase64 = Base64.getEncoder().encodeToString(fileBytes);
+                    HybridCrypto.HybridPayload p = HybridCrypto.encrypt(fileBase64, destPk);
+                    cipherB64 = p.cipherB64();
+                    encKeyB64 = p.encKeyB64();
+                    ivB64 = p.ivB64();
+                } else {
+                    cipherB64 = Base64.getEncoder().encodeToString(fileBytes);
+                    encKeyB64 = null;
+                    ivB64 = null;
+                }
+
+                adjuntosDto.add(new AdjuntoDTO(filename, mimeType, cipherB64, encKeyB64, ivB64));
+            }
+            dto.setAdjuntos(adjuntosDto);
+
+            // 2) POST al backend
+            String json = mapper.writeValueAsString(dto);
             HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
 
             http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
                 if (resp.statusCode() == 200) {
                     try {
                         MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
-
                         Platform.runLater(() -> {
-                            /* Añadimos a la bandeja de enviados */
-                            MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText)); // ya en claro
-
+                            // Añadimos a la bandeja de enviados
+                            MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));
                             pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.alert.info.sent"));
                             stage.close();
                         });
@@ -322,11 +359,10 @@ public class ChatWindow {
                 }
             });
 
-        } catch (Exception ex) {            // incluye fallo al cifrar o a la red
+        } catch (Exception ex) {
             pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.encrypt"));
         }
     }
-
 
     private void updateIcons() {
         /* Candado */
@@ -354,5 +390,30 @@ public class ChatWindow {
         HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + username + "/publicKey")).GET().build();
         String pubB64 = http.send(pkReq, HttpResponse.BodyHandlers.ofString()).body();
         return RSAUtils.publicKeyFromBase64(pubB64);
+    }
+
+    private void downloadAttachment(AdjuntoDTO a) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Guardar " + a.getFilename());
+        chooser.setInitialFileName(a.getFilename());
+        File dest = chooser.showSaveDialog(stage);
+        if (dest == null) return;
+
+        try {
+            byte[] data;
+            if (a.getEncKeyBase64() != null && !a.getEncKeyBase64().isBlank()) {
+                // Descifrado híbrido AES-GCM + RSA
+                HybridCrypto.HybridPayload p = new HybridCrypto.HybridPayload(a.getCipherTextBase64(), a.getEncKeyBase64(), a.getIvBase64());
+                String base64 = HybridCrypto.decrypt(p, KeyManager.getPrivateKey());
+                data = Base64.getDecoder().decode(base64);
+            } else {
+                // Solo Base64
+                data = Base64.getDecoder().decode(a.getCipherTextBase64());
+            }
+            Files.write(dest.toPath(), data);
+            pop.mostrarAlertaInformativa(LocaleManager.bundle().getString("chat.alert.info.downloaded"), dest.getAbsolutePath());
+        } catch (Exception ex) {
+            pop.mostrarAlertaError(LocaleManager.bundle().getString("common.error"), LocaleManager.bundle().getString("chat.alert.error.download"));
+        }
     }
 }

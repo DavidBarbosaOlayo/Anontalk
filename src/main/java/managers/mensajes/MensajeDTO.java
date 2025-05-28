@@ -1,19 +1,21 @@
 package managers.mensajes;
 
+import managers.mensajes.adjuntos.AdjuntoDTO;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MensajeDTO {
-
     private Long id;
     private String remitente;
     private String destinatario;
     private String asunto;
-
     private String cipherTextBase64;
     private String encKeyBase64;
     private String ivBase64;
-
     private LocalDateTime fechaHora;
+    private List<AdjuntoDTO> adjuntos = new ArrayList<>();
 
     public MensajeDTO() {
     }
@@ -29,6 +31,7 @@ public class MensajeDTO {
         this.fechaHora = fechaHora;
     }
 
+    // ─── Getters & setters ─────────────────────────────────────────────
 
     public Long getId() {
         return id;
@@ -92,5 +95,13 @@ public class MensajeDTO {
 
     public void setFechaHora(LocalDateTime fechaHora) {
         this.fechaHora = fechaHora;
+    }
+
+    public List<AdjuntoDTO> getAdjuntos() {
+        return adjuntos;
+    }
+
+    public void setAdjuntos(List<AdjuntoDTO> adjuntos) {
+        this.adjuntos = adjuntos;
     }
 }

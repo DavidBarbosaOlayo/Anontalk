@@ -18,6 +18,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -26,17 +27,20 @@ import managers.PopUpInfo;
 import managers.mensajes.Mensaje;
 import managers.mensajes.MensajeDTO;
 import managers.mensajes.MessageStore;
+import managers.mensajes.adjuntos.AdjuntoDTO;
 import org.springframework.context.ConfigurableApplicationContext;
 import security.encryption.HybridCrypto;
 import security.encryption.KeyManager;
 import security.encryption.RSAUtils;
 import utils.LocaleManager;
 
+import java.io.File;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.util.*;
@@ -354,13 +358,17 @@ public class MainInboxWindow extends Application {
 
     private Mensaje mapInbox(MensajeDTO dto) {
         String plain = decodeBody(dto);
-        return new Mensaje(dto.getId(), dto.getRemitente(), dto.getAsunto(), plain);
+        // incluimos adjuntos directamente desde el DTO
+        return new Mensaje(dto.getId(), dto.getRemitente(), dto.getAsunto(), plain, dto.getAdjuntos()  // lista de AdjuntoDTO
+        );
     }
+
 
     private Mensaje mapSent(MensajeDTO dto) {
         String plain = decodeBody(dto);
-        return new Mensaje(dto.getId(), dto.getDestinatario(), dto.getAsunto(), plain);
+        return new Mensaje(dto.getId(), dto.getDestinatario(), dto.getAsunto(), plain, dto.getAdjuntos());
     }
+
 
     private void deleteMessage(Mensaje msg) {
         MessageStore.inboxMessages.removeIf(m -> m.getId().equals(msg.getId()));
@@ -380,7 +388,10 @@ public class MainInboxWindow extends Application {
     private void showSendDialog() {
         encryptNew = false;                      // estado inicial
 
-        Stage dlg = new Stage();                 // SIN Modality → modeless
+        List<File> selectedFiles = new ArrayList<>();
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(bundle().getString("chat.attach.select"));
+        Stage dlg = new Stage();
         dlg.initOwner(stage);
 
         /* ---------- NODOS PRINCIPALES ---------- */
@@ -407,6 +418,16 @@ public class MainInboxWindow extends Application {
 
         Button btnAttach = new Button(null, new ImageView(darkTheme ? icoAttachDark : icoAttach));
         btnAttach.getStyleClass().add("icon-button");
+        btnAttach.setOnAction(e -> {
+            List<File> files = fileChooser.showOpenMultipleDialog(dlg);
+            if (files != null && !files.isEmpty()) {
+                selectedFiles.clear();
+                selectedFiles.addAll(files);
+                pop.mostrarAlertaInformativa(bundle().getString("common.info"), MessageFormat.format(bundle().getString("chat.attach.added"), files.size()));
+            }
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
+        });
+
 
         /* ---- Timer items ---- */
         MenuItem miTimerOff = new MenuItem();
@@ -496,6 +517,32 @@ public class MainInboxWindow extends Application {
                     dto.setEncKeyBase64(null);
                     dto.setIvBase64(null);
                 }
+
+                // 2.1) Adjuntos
+                List<AdjuntoDTO> adjuntosDto = new ArrayList<>();
+                for (File file : selectedFiles) {
+                    byte[] fileBytes = Files.readAllBytes(file.toPath());
+                    String filename = file.getName();
+                    String mimeType = Files.probeContentType(file.toPath());
+
+                    String cipherB64, encKeyB64, ivB64;
+                    if (encryptNew) {
+                        // cifrar el contenido Base64 del fichero
+                        PublicKey destPk = RSAUtils.publicKeyFromBase64(pkRes.body());
+                        String fileBase64 = Base64.getEncoder().encodeToString(fileBytes);
+                        HybridCrypto.HybridPayload p = HybridCrypto.encrypt(fileBase64, destPk);
+                        cipherB64 = p.cipherB64();
+                        encKeyB64 = p.encKeyB64();
+                        ivB64 = p.ivB64();
+                    } else {
+                        cipherB64 = Base64.getEncoder().encodeToString(fileBytes);
+                        encKeyB64 = null;
+                        ivB64 = null;
+                    }
+
+                    adjuntosDto.add(new AdjuntoDTO(filename, mimeType, cipherB64, encKeyB64, ivB64));
+                }
+                dto.setAdjuntos(adjuntosDto);
 
                 /* 3) POST */
                 String json = mapper.writeValueAsString(dto);

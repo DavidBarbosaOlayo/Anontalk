@@ -1,7 +1,11 @@
 package managers.mensajes;
 
 import jakarta.persistence.*;
+import managers.mensajes.adjuntos.AdjuntoSB;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "mensajes")
@@ -29,6 +33,10 @@ public class MensajeSB {
     @Column(name = "fecha_hora")
     private LocalDateTime fechaHora = LocalDateTime.now();
 
+
+    @OneToMany(mappedBy = "mensaje", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AdjuntoSB> adjuntos = new ArrayList<>();
+
     public MensajeSB() {
     }
 
@@ -43,7 +51,10 @@ public class MensajeSB {
     public Long getId() {
         return id;
     }
-    public void setAsunto(String asunto) { this.asunto = asunto; }
+
+    public void setAsunto(String asunto) {
+        this.asunto = asunto;
+    }
 
     public String getRemitente() {
         return remitente;
