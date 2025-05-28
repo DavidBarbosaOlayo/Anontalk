@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -280,89 +281,119 @@ public class ChatWindow {
     /* =================================================================================== */
     /*                               ENVÍO DE RESPUESTA                                   */
     /* =================================================================================== */
+
     private void sendReply(String plainText) {
         ResourceBundle b = LocaleManager.bundle();
 
-        // 0) Validación rápida
         if (plainText.isEmpty()) {
             pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.emptyMessage"));
             return;
         }
-        String destinatario = mensaje.getSender();
 
-        try {
-            // 1) Construir DTO de mensaje
-            MensajeDTO dto = new MensajeDTO();
-            dto.setRemitente(currentUser);
-            dto.setDestinatario(destinatario);
-            dto.setAsunto(mensaje.getAsunto());
+        // 1) Creamos un Task que corre en background
+        Task<MensajeDTO> buildTask = new Task<>() {
+            @Override
+            protected MensajeDTO call() throws Exception {
+                String destinatario = mensaje.getSender();
 
-            // 1.1) Texto (cifrado o en claro)
-            if (encrypt) {
-                PublicKey destPk = fetchDestPublicKey(destinatario);
-                HybridCrypto.HybridPayload p = HybridCrypto.encrypt(plainText, destPk);
-                dto.setCipherTextBase64(p.cipherB64());
-                dto.setEncKeyBase64(p.encKeyB64());
-                dto.setIvBase64(p.ivB64());
-            } else {
-                String b64 = Base64.getEncoder().encodeToString(plainText.getBytes(StandardCharsets.UTF_8));
-                dto.setCipherTextBase64(b64);
-                dto.setEncKeyBase64(null);
-                dto.setIvBase64(null);
-            }
+                // Construir DTO
+                MensajeDTO dto = new MensajeDTO();
+                dto.setRemitente(currentUser);
+                dto.setDestinatario(destinatario);
+                dto.setAsunto(mensaje.getAsunto());
 
-            // 1.2) Adjuntos
-            List<AdjuntoDTO> adjuntosDto = new ArrayList<>();
-            for (File file : selectedFiles) {
-                byte[] fileBytes = Files.readAllBytes(file.toPath());
-                String filename = file.getName();
-                String mimeType = Files.probeContentType(file.toPath());
-
-                String cipherB64, encKeyB64, ivB64;
+                // Texto (cifrado o claro)
                 if (encrypt) {
-                    // cifrar el contenido Base64 del fichero
                     PublicKey destPk = fetchDestPublicKey(destinatario);
-                    String fileBase64 = Base64.getEncoder().encodeToString(fileBytes);
-                    HybridCrypto.HybridPayload p = HybridCrypto.encrypt(fileBase64, destPk);
-                    cipherB64 = p.cipherB64();
-                    encKeyB64 = p.encKeyB64();
-                    ivB64 = p.ivB64();
+                    var p = HybridCrypto.encrypt(plainText, destPk);
+                    dto.setCipherTextBase64(p.cipherB64());
+                    dto.setEncKeyBase64(p.encKeyB64());
+                    dto.setIvBase64(p.ivB64());
                 } else {
-                    cipherB64 = Base64.getEncoder().encodeToString(fileBytes);
-                    encKeyB64 = null;
-                    ivB64 = null;
+                    dto.setCipherTextBase64(Base64.getEncoder().encodeToString(plainText.getBytes(StandardCharsets.UTF_8)));
+                    dto.setEncKeyBase64(null);
+                    dto.setIvBase64(null);
                 }
 
-                adjuntosDto.add(new AdjuntoDTO(filename, mimeType, cipherB64, encKeyB64, ivB64));
-            }
-            dto.setAdjuntos(adjuntosDto);
+                // Adjuntos
+                List<AdjuntoDTO> adjuntosDto = new ArrayList<>();
+                for (File file : selectedFiles) {
+                    byte[] fileBytes = Files.readAllBytes(file.toPath());
+                    String filename = file.getName();
+                    String mimeType = Files.probeContentType(file.toPath());
 
-            // 2) POST al backend
-            String json = mapper.writeValueAsString(dto);
-            HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
-
-            http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
-                if (resp.statusCode() == 200) {
-                    try {
-                        MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
-                        Platform.runLater(() -> {
-                            // Añadimos a la bandeja de enviados
-                            MessageStore.sentMessages.add(new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText));
-                            pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.alert.info.sent"));
-                            stage.close();
-                        });
-                    } catch (Exception ex) {
-                        Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.serverResponse")));
+                    if (encrypt) {
+                        PublicKey destPk = fetchDestPublicKey(destinatario);
+                        String fileB64 = Base64.getEncoder().encodeToString(fileBytes);
+                        var p = HybridCrypto.encrypt(fileB64, destPk);
+                        adjuntosDto.add(new AdjuntoDTO(filename, mimeType, p.cipherB64(), p.encKeyB64(), p.ivB64()));
+                    } else {
+                        adjuntosDto.add(new AdjuntoDTO(
+                                filename,
+                                mimeType,
+                                Base64.getEncoder().encodeToString(fileBytes),
+                                null,
+                                null
+                        ));
                     }
-                } else {
-                    Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.save")));
                 }
-            });
+                dto.setAdjuntos(adjuntosDto);
 
-        } catch (Exception ex) {
-            pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.encrypt"));
-        }
+                return dto;
+            }
+        };
+
+        // 2) Cuando termine de construir el DTO, lo enviamos al servidor
+        buildTask.setOnSucceeded(evt -> {
+            MensajeDTO dto = buildTask.getValue();
+            try {
+                String json = mapper.writeValueAsString(dto);
+                var request = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:8080/api/messages/send"))
+                        .header("Content-Type","application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(json))
+                        .build();
+
+                http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                        .thenAccept(resp -> {
+                            if (resp.statusCode() == 200) {
+                                // parsear respuesta y actualizar UI
+                                Platform.runLater(() -> {
+                                    try {
+                                        MensajeDTO saved = mapper.readValue(resp.body(), MensajeDTO.class);
+                                        MessageStore.sentMessages.add(
+                                                new Mensaje(saved.getId(), saved.getDestinatario(), saved.getAsunto(), plainText)
+                                        );
+                                        pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.alert.info.sent"));
+                                        stage.close();
+                                    } catch (Exception ex) {
+                                        pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.serverResponse"));
+                                    }
+                                });
+                            } else {
+                                Platform.runLater(() ->
+                                        pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.save"))
+                                );
+                            }
+                        });
+
+            } catch (Exception ex) {
+                Platform.runLater(() ->
+                        pop.mostrarAlertaError(b.getString("common.error"), b.getString("chat.alert.error.encrypt"))
+                );
+            }
+        });
+
+        buildTask.setOnFailed(evt ->
+                Platform.runLater(() ->
+                        pop.mostrarAlertaError(b.getString("common.error"), buildTask.getException().getMessage())
+                )
+        );
+
+        // 3) Finalmente, lanzamos el Task en el pool de background
+        MainApp.Background.POOL.submit(buildTask);
     }
+
 
     private void updateIcons() {
         /* Candado */

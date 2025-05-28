@@ -5,6 +5,9 @@ import javafx.application.Platform;
 import javafx.stage.Stage;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class MainApp extends Application {
 
     private ConfigurableApplicationContext springCtx;
@@ -30,11 +33,17 @@ public class MainApp extends Application {
     @Override
     public void stop() throws Exception {
         super.stop();
+        Background.POOL.shutdownNow();
         // Al cerrar la app, cerramos también el contexto de Spring
         if (springCtx != null) {
             springCtx.close();
         }
     }
+
+    public static class Background {
+        public static final ExecutorService POOL = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    }
+
 
     public static void main(String[] args) {
         launch(args);
