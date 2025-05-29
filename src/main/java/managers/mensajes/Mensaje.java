@@ -12,6 +12,7 @@ public class Mensaje {
     private String content;
     private LocalDateTime fechaHora;
     private List<AdjuntoDTO> adjuntos;
+    private boolean read;
 
     public Mensaje() {
     }
@@ -25,7 +26,7 @@ public class Mensaje {
     }
 
     // ► Nuevo constructor con adjuntos
-    public Mensaje(Long id, String sender, String asunto, String content, List<AdjuntoDTO> adjuntos,LocalDateTime fechaHora) {
+    public Mensaje(Long id, String sender, String asunto, String content, List<AdjuntoDTO> adjuntos, LocalDateTime fechaHora) {
         this.id = id;
         this.sender = sender;
         this.asunto = asunto;
@@ -76,5 +77,15 @@ public class Mensaje {
         this.adjuntos = adjuntos;
     }
 
-    public LocalDateTime getFechaHora() { return fechaHora; }
+    public LocalDateTime getFechaHora() {
+        return fechaHora;
+    }
+
+    public boolean isRead() {
+        return read;
+    }
+
+    public void setRead(boolean read) {
+        this.read = read;
+    }
 }

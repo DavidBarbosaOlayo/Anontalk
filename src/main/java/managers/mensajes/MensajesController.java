@@ -51,4 +51,10 @@ public class MensajesController {
     public ResponseEntity<List<AdjuntoDTO>> getAttachments(@PathVariable("id") Long id) {
         return ResponseEntity.ok(mensajeService.getAttachments(id));
     }
+    @PatchMapping("/{id}/mark-read")
+    public ResponseEntity<Void> markRead(@PathVariable Long id) {
+        mensajeService.markRead(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }

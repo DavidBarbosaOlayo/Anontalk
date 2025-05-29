@@ -16,6 +16,7 @@ public class MensajeDTO {
     private String ivBase64;
     private LocalDateTime fechaHora;
     private List<AdjuntoDTO> adjuntos = new ArrayList<>();
+    private boolean read;
 
     public MensajeDTO() {
     }
@@ -104,4 +105,7 @@ public class MensajeDTO {
     public void setAdjuntos(List<AdjuntoDTO> adjuntos) {
         this.adjuntos = adjuntos;
     }
+
+    public boolean isRead() { return read; }
+    public void setRead(boolean read) { this.read = read; }
 }

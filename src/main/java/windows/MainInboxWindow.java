@@ -120,9 +120,7 @@ public class MainInboxWindow extends Application {
         this.stage = stage;
 
         try {
-            Image appIcon = new Image(Objects.requireNonNull(
-                    getClass().getResourceAsStream("/assets/logo.png")
-            ));
+            Image appIcon = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/logo.png")));
             stage.getIcons().clear();
             stage.getIcons().add(appIcon);
         } catch (Exception e) {
@@ -336,8 +334,22 @@ public class MainInboxWindow extends Application {
         table.setPlaceholder(new Label(inbox ? bundle().getString("table.placeholder.inbox") : bundle().getString("table.placeholder.sent")));
         table.setRowFactory(tv -> {
             TableRow<Mensaje> row = new TableRow<>();
+
+            row.itemProperty().addListener((obs, oldMsg, newMsg) -> {
+                // 1) quitamos siempre la clase…
+                row.getStyleClass().remove("read-row");
+                // 2) …y sólo si hay mensaje Y está leído, la volvemos a añadir
+                if (newMsg != null && newMsg.isRead()) {
+                    row.getStyleClass().add("read-row");
+                }
+            });
+
             row.setOnMouseClicked(ev -> {
-                if (!row.isEmpty() && ev.getClickCount() == 2) new ChatWindow(currentUser, row.getItem()).show();
+                if (!row.isEmpty() && ev.getClickCount() == 2) {
+                    Mensaje msg = row.getItem();
+                    markMessageReadOnServer(msg.getId());
+                    new ChatWindow(currentUser, msg).show();
+                }
             });
             return row;
         });
@@ -353,22 +365,20 @@ public class MainInboxWindow extends Application {
         javafx.concurrent.Task<List<MensajeDTO>> task = new javafx.concurrent.Task<>() {
             @Override
             protected List<MensajeDTO> call() throws Exception {
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/messages/inbox/" + currentUser))
-                        .GET()
-                        .build();
+                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/inbox/" + currentUser)).GET().build();
                 HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
-                return mapper.readValue(res.body(), new com.fasterxml.jackson.core.type.TypeReference<>() {});
+                return mapper.readValue(res.body(), new com.fasterxml.jackson.core.type.TypeReference<>() {
+                });
             }
         };
 
         task.setOnSucceeded(evt -> {
-            List<Mensaje> mensajes = task.getValue().stream()
-                    .map(this::mapInbox)
-                    .sorted((m1, m2) -> m2.getFechaHora().compareTo(m1.getFechaHora())) // Orden inverso por fecha
+            List<Mensaje> mensajes = task.getValue().stream().map(this::mapInbox).sorted((m1, m2) -> m2.getFechaHora().compareTo(m1.getFechaHora())) // Orden inverso por fecha
                     .toList();
 
             Platform.runLater(() -> MessageStore.inboxMessages.setAll(mensajes));
+            long unreadCount = mensajes.stream().filter(m -> !m.isRead()).count();
+            updateInboxTabBadge(unreadCount);
         });
 
         task.setOnFailed(evt -> {
@@ -381,20 +391,16 @@ public class MainInboxWindow extends Application {
         Task<List<MensajeDTO>> task = new Task<>() {
             @Override
             protected List<MensajeDTO> call() throws Exception {
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/messages/sent/" + currentUser))
-                        .GET()
-                        .build();
+                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/sent/" + currentUser)).GET().build();
                 HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
-                return mapper.readValue(res.body(), new TypeReference<>() {});
+                return mapper.readValue(res.body(), new TypeReference<>() {
+                });
             }
         };
 
         task.setOnSucceeded(evt -> {
             List<MensajeDTO> sent = task.getValue();
-            List<Mensaje> mensajes = sent.stream()
-                    .map(this::mapSent)
-                    .sorted((m1, m2) -> m2.getFechaHora().compareTo(m1.getFechaHora())) // Orden inverso por fecha
+            List<Mensaje> mensajes = sent.stream().map(this::mapSent).sorted((m1, m2) -> m2.getFechaHora().compareTo(m1.getFechaHora())) // Orden inverso por fecha
                     .toList();
 
             // actualizar en el hilo FX
@@ -410,13 +416,16 @@ public class MainInboxWindow extends Application {
 
     private Mensaje mapInbox(MensajeDTO dto) {
         String plain = decodeBody(dto);
-        return new Mensaje(dto.getId(), dto.getRemitente(), dto.getAsunto(), plain, dto.getAdjuntos(), dto.getFechaHora());
+        Mensaje m = new Mensaje(dto.getId(), dto.getRemitente(), dto.getAsunto(), plain, dto.getAdjuntos(), dto.getFechaHora());
+        m.setRead(dto.isRead());
+        return m;
     }
-
 
     private Mensaje mapSent(MensajeDTO dto) {
         String plain = decodeBody(dto);
-        return new Mensaje(dto.getId(), dto.getDestinatario(), dto.getAsunto(), plain, dto.getAdjuntos(), dto.getFechaHora());
+        Mensaje m = new Mensaje(dto.getId(), dto.getDestinatario(), dto.getAsunto(), plain, dto.getAdjuntos(), dto.getFechaHora());
+        m.setRead(dto.isRead());
+        return m;
     }
 
 
@@ -721,4 +730,35 @@ public class MainInboxWindow extends Application {
         // Actualizar CSS
         scene.getStylesheets().setAll(ThemeManager.getInstance().getCss());
     }
+
+    private void markMessageReadOnServer(Long id) {
+        HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/" + id + "/mark-read")).method("PATCH", HttpRequest.BodyPublishers.noBody()).build();
+        http.sendAsync(req, HttpResponse.BodyHandlers.discarding()).thenRun(this::refreshInbox);  // refresca la bandeja al confirmar
+    }
+
+    private void updateInboxTabBadge(long count) {
+        Tab inboxTab = tabs.getTabs().get(0);
+        String tabLabel = bundle().getString("tab.inbox");
+
+        if (count > 0) {
+            Label name = new Label(tabLabel);
+            Label badge = new Label(String.valueOf(count));
+            badge.getStyleClass().add("badge");
+
+            StackPane sp = new StackPane(name, badge);
+            // Texto anclado a la izquierda
+            StackPane.setAlignment(name, Pos.CENTER_LEFT);
+            // Badge arriba-derecha
+            StackPane.setAlignment(badge, Pos.TOP_RIGHT);
+            // Lo “tira” un poco hacia arriba y a la derecha
+            StackPane.setMargin(badge, new Insets(-4, -4, 0, 0));
+
+            inboxTab.setGraphic(sp);
+            inboxTab.setText(null);
+        } else {
+            inboxTab.setGraphic(null);
+            inboxTab.setText(tabLabel);
+        }
+    }
+
 }

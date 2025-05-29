@@ -37,6 +37,10 @@ public class MensajeSB {
     @OneToMany(mappedBy = "mensaje", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AdjuntoSB> adjuntos = new ArrayList<>();
 
+    @Column(name="leido", nullable=false)
+    private boolean read = false;
+
+
     public MensajeSB() {
     }
 
@@ -107,4 +111,7 @@ public class MensajeSB {
     public String getAsunto() {
         return asunto;
     }
+
+    public boolean isRead() { return read; }
+    public void setRead(boolean read) { this.read = read; }
 }

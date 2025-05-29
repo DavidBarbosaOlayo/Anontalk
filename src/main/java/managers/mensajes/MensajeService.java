@@ -4,9 +4,11 @@ package managers.mensajes;
 import managers.mensajes.adjuntos.AdjuntoDTO;
 import managers.mensajes.adjuntos.AdjuntoSB;
 import managers.mensajes.adjuntos.AdjuntoRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -46,6 +48,7 @@ public class MensajeService {
 
         MensajeDTO resp = new MensajeDTO(savedMsg.getId(), savedMsg.getRemitente(), savedMsg.getDestinatario(), savedMsg.getAsunto(), savedMsg.getCipherTextBase64(), savedMsg.getEncKeyBase64(), savedMsg.getIvBase64(), savedMsg.getFechaHora());
         resp.setAdjuntos(dto.getAdjuntos());
+        resp.setRead(false);
         return resp;
     }
 
@@ -61,8 +64,13 @@ public class MensajeService {
      * LISTA LIGERA: devuelve sólo metadata sin adjuntos
      */
     public List<MensajeDTO> getInboxSummary(String destinatario) {
-        return repo.findByDestinatario(destinatario).stream().map(m -> new MensajeDTO(m.getId(), m.getRemitente(), m.getDestinatario(), m.getAsunto(), m.getCipherTextBase64(), m.getEncKeyBase64(), m.getIvBase64(), m.getFechaHora())).collect(Collectors.toList());
+        return repo.findByDestinatario(destinatario).stream().map(m -> {
+            MensajeDTO dto = new MensajeDTO(m.getId(), m.getRemitente(), m.getDestinatario(), m.getAsunto(), m.getCipherTextBase64(), m.getEncKeyBase64(), m.getIvBase64(), m.getFechaHora());
+            dto.setRead(m.isRead());
+            return dto;
+        }).collect(Collectors.toList());
     }
+
 
     /**
      * LISTA LIGERA: devuelve sólo metadata sin adjuntos
@@ -77,4 +85,14 @@ public class MensajeService {
     public List<AdjuntoDTO> getAttachments(Long mensajeId) {
         return adjRepo.findByMensajeId(mensajeId).stream().map(sb -> new AdjuntoDTO(sb.getFilename(), sb.getMimeType(), sb.getCipherB64(), sb.getEncKeyB64(), sb.getIvB64())).collect(Collectors.toList());
     }
+
+    @Transactional
+    public void markRead(Long id) {
+        MensajeSB m = repo.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!m.isRead()) {
+            m.setRead(true);
+            repo.save(m);
+        }
+    }
+
 }

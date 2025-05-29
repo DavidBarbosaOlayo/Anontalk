@@ -306,7 +306,7 @@
 .chat-header-value {
     -fx-font-weight: bold;
     -fx-padding: 0 0 2px 5px;
-}}
+}
 
 /* Área del chat con borde blanco */
 /* Área del chat con borde blanco */
@@ -338,4 +338,39 @@
 .chat-time-label {
     -fx-font-size: 11px;
     -fx-text-fill: #aaaaaa;
+}
+
+.badge {
+    -fx-background-color: #d32f2f;
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    /* =======================
+       Círculo perfecto
+    ========================= */
+    -fx-alignment: center;
+    -fx-min-width: 18px;
+    -fx-min-height: 18px;
+    -fx-pref-width: 18px;
+    -fx-pref-height: 18px;
+    -fx-padding: 0;                /* sin “acolchamiento” extra */
+    -fx-background-radius: 9px;    /* la mitad de 18px */
+    -fx-border-color: white;
+    -fx-border-width: 1px;
+}
+
+
+
+/* Filas leídas: fondo más tenue, icono de papelera sin cambios */
+.bandeja-tabla .table-row-cell:even.read-row {
+    -fx-background-color: #181a1b;  /* más oscuro que #202124 */
+}
+.bandeja-tabla .table-row-cell:odd.read-row {
+    -fx-background-color: #252627;  /* más oscuro que #2c2c2c */
+}
+
+
+/* Para que sólo afecte al fondo, no al contenido */
+.bandeja-tabla .table-row-cell.read-row .table-cell {
+    /* no cambiamos la opacidad de celdas ni de botones */
 }
