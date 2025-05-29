@@ -24,6 +24,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import security.encryption.AESUtils;
 import security.encryption.KeyManager;
 import security.encryption.RSAUtils;
@@ -47,6 +48,7 @@ import java.util.ResourceBundle;
 @SpringBootApplication(scanBasePackages = {"windows", "managers.mensajes", "managers.users", "security.passwords"})
 @EnableJpaRepositories(basePackages = {"managers.mensajes", "managers.users", "security.passwords"})
 @EntityScan(basePackages = {"managers.mensajes", "managers.users", "security.passwords"})
+@EnableScheduling
 public class LoginWindow extends Application {
 
     private final ConfigurableApplicationContext springCtx;

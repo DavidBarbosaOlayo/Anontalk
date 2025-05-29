@@ -44,6 +44,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.PublicKey;
 import java.text.MessageFormat;
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -545,6 +546,8 @@ public class MainInboxWindow extends Application {
                 return;
             }
 
+
+
             try {
                 /* 1) clave pública destinatario */
                 HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + dest + "/publicKey")).GET().build();
@@ -564,6 +567,11 @@ public class MainInboxWindow extends Application {
                 dto.setRemitente(currentUser);
                 dto.setDestinatario(dest);
                 dto.setAsunto(txtSubj.getText().trim());
+
+                String timerSelection = lblTimer.getText();
+                if (!timerSelection.isEmpty()) {
+                    dto.setExpiryDate(calculateExpiry(timerSelection));
+                }
 
                 if (encryptNew) {
                     PublicKey pkDest = RSAUtils.publicKeyFromBase64(pkRes.body());
@@ -759,6 +767,16 @@ public class MainInboxWindow extends Application {
             inboxTab.setGraphic(null);
             inboxTab.setText(tabLabel);
         }
+    }
+
+    private LocalDateTime calculateExpiry(String selection) {
+        return switch (selection) {
+            case "30 s" -> LocalDateTime.now().plusSeconds(30);
+            case "1 min" -> LocalDateTime.now().plusMinutes(1);
+            case "5 min" -> LocalDateTime.now().plusMinutes(5);
+            case "30 min" -> LocalDateTime.now().plusMinutes(30);
+            default -> null;
+        };
     }
 
 }

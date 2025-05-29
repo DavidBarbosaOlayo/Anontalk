@@ -17,11 +17,13 @@ public class MensajeDTO {
     private LocalDateTime fechaHora;
     private List<AdjuntoDTO> adjuntos = new ArrayList<>();
     private boolean read;
+    private LocalDateTime expiryDate; // Nuevo campo para el temporizador
+
 
     public MensajeDTO() {
     }
 
-    public MensajeDTO(Long id, String remitente, String destinatario, String asunto, String cipherTextBase64, String encKeyBase64, String ivBase64, LocalDateTime fechaHora) {
+    public MensajeDTO(Long id, String remitente, String destinatario, String asunto, String cipherTextBase64, String encKeyBase64, String ivBase64, LocalDateTime fechaHora, LocalDateTime expiryDate) {
         this.id = id;
         this.remitente = remitente;
         this.destinatario = destinatario;
@@ -30,6 +32,7 @@ public class MensajeDTO {
         this.encKeyBase64 = encKeyBase64;
         this.ivBase64 = ivBase64;
         this.fechaHora = fechaHora;
+        this.expiryDate = expiryDate;
     }
 
     // ─── Getters & setters ─────────────────────────────────────────────
@@ -108,4 +111,12 @@ public class MensajeDTO {
 
     public boolean isRead() { return read; }
     public void setRead(boolean read) { this.read = read; }
+
+    public LocalDateTime getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDateTime expiryDate) {
+        this.expiryDate = expiryDate;
+    }
 }

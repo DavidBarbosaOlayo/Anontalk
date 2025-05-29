@@ -33,6 +33,9 @@ public class MensajeSB {
     @Column(name = "fecha_hora")
     private LocalDateTime fechaHora = LocalDateTime.now();
 
+    @Column(name = "expiry_date")
+    private LocalDateTime expiryDate;
+
 
     @OneToMany(mappedBy = "mensaje", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AdjuntoSB> adjuntos = new ArrayList<>();
@@ -114,4 +117,12 @@ public class MensajeSB {
 
     public boolean isRead() { return read; }
     public void setRead(boolean read) { this.read = read; }
+
+    public LocalDateTime getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDateTime expiryDate) {
+        this.expiryDate = expiryDate;
+    }
 }

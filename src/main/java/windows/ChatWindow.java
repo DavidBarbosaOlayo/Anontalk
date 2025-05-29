@@ -408,6 +408,7 @@ public class ChatWindow {
             return;
         }
 
+
         // 1) Creamos un Task que corre en background
         Task<MensajeDTO> buildTask = new Task<>() {
             @Override
@@ -419,6 +420,10 @@ public class ChatWindow {
                 dto.setRemitente(currentUser);
                 dto.setDestinatario(destinatario);
                 dto.setAsunto(mensaje.getAsunto());
+
+                // Calcular fecha de expiración
+                String timerSelection = lblTimerState.getText();
+                dto.setExpiryDate(calculateExpiry(timerSelection));
 
                 // Texto (cifrado o claro)
                 if (!plainText.isEmpty()) {
@@ -558,5 +563,15 @@ public class ChatWindow {
         } catch (Exception ex) {
             pop.mostrarAlertaError(LocaleManager.bundle().getString("common.error"), LocaleManager.bundle().getString("chat.alert.error.download"));
         }
+    }
+
+    private LocalDateTime calculateExpiry(String selection) {
+        return switch (selection) {
+            case "30 s" -> LocalDateTime.now().plusSeconds(30);
+            case "1 min" -> LocalDateTime.now().plusMinutes(1);
+            case "5 min" -> LocalDateTime.now().plusMinutes(5);
+            case "30 min" -> LocalDateTime.now().plusMinutes(30);
+            default -> null;
+        };
     }
 }
