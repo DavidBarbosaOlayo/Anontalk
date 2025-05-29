@@ -353,35 +353,54 @@ public class MainInboxWindow extends Application {
         javafx.concurrent.Task<List<MensajeDTO>> task = new javafx.concurrent.Task<>() {
             @Override
             protected List<MensajeDTO> call() throws Exception {
-                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/inbox/" + currentUser)).GET().build();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:8080/api/messages/inbox/" + currentUser))
+                        .GET()
+                        .build();
                 HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
-                return mapper.readValue(res.body(), new com.fasterxml.jackson.core.type.TypeReference<>() {
-                });
+                return mapper.readValue(res.body(), new com.fasterxml.jackson.core.type.TypeReference<>() {});
             }
         };
-        task.setOnSucceeded(evt -> MessageStore.inboxMessages.setAll(task.getValue().stream().map(this::mapInbox).toList()));
+
+        task.setOnSucceeded(evt -> {
+            List<Mensaje> mensajes = task.getValue().stream()
+                    .map(this::mapInbox)
+                    .sorted((m1, m2) -> m2.getFechaHora().compareTo(m1.getFechaHora())) // Orden inverso por fecha
+                    .toList();
+
+            Platform.runLater(() -> MessageStore.inboxMessages.setAll(mensajes));
+        });
+
         task.setOnFailed(evt -> {
             // opcional: log.error("Error refrescando inbox", task.getException());
         });
         MainApp.Background.POOL.submit(task);
     }
 
-
     private void refreshSent() {
         Task<List<MensajeDTO>> task = new Task<>() {
             @Override
             protected List<MensajeDTO> call() throws Exception {
-                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/sent/" + currentUser)).GET().build();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:8080/api/messages/sent/" + currentUser))
+                        .GET()
+                        .build();
                 HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
-                return mapper.readValue(res.body(), new TypeReference<>() {
-                });
+                return mapper.readValue(res.body(), new TypeReference<>() {});
             }
         };
+
         task.setOnSucceeded(evt -> {
             List<MensajeDTO> sent = task.getValue();
+            List<Mensaje> mensajes = sent.stream()
+                    .map(this::mapSent)
+                    .sorted((m1, m2) -> m2.getFechaHora().compareTo(m1.getFechaHora())) // Orden inverso por fecha
+                    .toList();
+
             // actualizar en el hilo FX
-            Platform.runLater(() -> MessageStore.sentMessages.setAll(sent.stream().map(this::mapSent).toList()));
+            Platform.runLater(() -> MessageStore.sentMessages.setAll(mensajes));
         });
+
         task.setOnFailed(evt -> {
             // opcional: log.error("Error refrescando sent", task.getException());
         });
