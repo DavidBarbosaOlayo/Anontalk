@@ -89,6 +89,7 @@ public class MainInboxWindow extends Application {
     private final Image icoTimer = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/timer.png")), 36, 36, true, true);
     private final Image icoTimerOn = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/timer1.png")), 36, 36, true, true);
     private final Image icoAttach = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/añadir.png")), 36, 36, true, true);
+    private final Image icoAttachOn = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/añadir1.png")), 36, 36, true, true);
     /* ───────── iconos redactar (DARK) ───────── */
     private final Image icoEncryptDark = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/cifradoDarkTheme.png")), 36, 36, true, true);
     private final Image icoTimerDark = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/timerDarkTheme.png")), 36, 36, true, true);
@@ -485,7 +486,7 @@ public class MainInboxWindow extends Application {
                 selectedFiles.addAll(files);
                 pop.mostrarAlertaInformativa(bundle().getString("common.info"), MessageFormat.format(bundle().getString("chat.attach.added"), files.size()));
             }
-            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
         });
 
 
@@ -496,7 +497,7 @@ public class MainInboxWindow extends Application {
             MenuItem mi = new MenuItem(t);
             mi.setOnAction(e -> {
                 lblTimer.setText(t);
-                updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
+                updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
             });
             mbTimer.getItems().add(mi);
         }
@@ -505,13 +506,13 @@ public class MainInboxWindow extends Application {
         btnEncrypt.setOnAction(e -> {
             encryptNew = !encryptNew;
             lblEncrypt.setText(bundle().getString(encryptNew ? "chat.encrypt.on" : "chat.encrypt.off"));
-            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
         });
 
         /* ---- Timer OFF ---- */
         miTimerOff.setOnAction(e -> {
             lblTimer.setText("");
-            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
         });
 
         /* ---- Tools grid ---- */
@@ -650,7 +651,7 @@ public class MainInboxWindow extends Application {
         ThemeManager.getInstance().themeProperty().addListener((o, oldT, n) -> {
             sc.getStylesheets().setAll(ThemeManager.getInstance().getCss());
             darkTheme = "dark".equals(n);
-            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
         });
 
         /* --- TEXTOS en caliente --- */
@@ -672,7 +673,7 @@ public class MainInboxWindow extends Application {
         dlg.setOnHidden(e -> LocaleManager.localeProperty().removeListener(locL));
 
         /* --- Iconos iniciales --- */
-        updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer);
+        updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
 
         dlg.setScene(sc);
         dlg.show();
@@ -695,8 +696,7 @@ public class MainInboxWindow extends Application {
         }
     }
 
-    private void updateSendIcons(Button btnEncrypt, MenuButton mbTimer, Button btnAttach, Label lblTimer) {
-
+    private void updateSendIcons(Button btnEncrypt, MenuButton mbTimer, Button btnAttach, Label lblTimer, List<File> selectedFiles) {
         /* 🔒  Candado */
         ((ImageView) btnEncrypt.getGraphic()).setImage(encryptNew ? icoEncryptOn : (darkTheme ? icoEncryptDark : icoEncrypt));
 
@@ -704,8 +704,13 @@ public class MainInboxWindow extends Application {
         boolean timerActivo = !lblTimer.getText().isBlank();
         ((ImageView) mbTimer.getGraphic()).setImage(timerActivo ? icoTimerOn : (darkTheme ? icoTimerDark : icoTimer));
 
-        /* 📎  Adjuntar (sin estado ON) */
-        ((ImageView) btnAttach.getGraphic()).setImage(darkTheme ? icoAttachDark : icoAttach);
+        /* 📎  Adjuntar: rojo si hay archivos seleccionados */
+        ImageView attachIcon = (ImageView) btnAttach.getGraphic();
+        if (!selectedFiles.isEmpty()) {
+            attachIcon.setImage(icoAttachOn); // Icono rojo
+        } else {
+            attachIcon.setImage(darkTheme ? icoAttachDark : icoAttach);
+        }
     }
 
     private static ResourceBundle bundle() {

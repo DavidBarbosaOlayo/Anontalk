@@ -45,6 +45,8 @@ public class ChatWindow {
     private final Mensaje mensaje;
     private final PopUpInfo pop = new PopUpInfo();
 
+    private FileChooser chooser;
+
     /* ---------------- servicios ---------------- */
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule()).disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -82,6 +84,7 @@ public class ChatWindow {
     public ChatWindow(String currentUser, Mensaje mensaje) {
         this.currentUser = currentUser;
         this.mensaje = mensaje;
+        this.chooser =  new FileChooser();
     }
 
     /* =================================================================================== */
@@ -214,15 +217,18 @@ public class ChatWindow {
             mbTimer.getItems().add(it);
         }
 
+        chooser.setTitle(b.getString("chat.attach.select"));
+
+
         btnAttach = new Button(null, new ImageView(icoAttach));
         btnAttach.getStyleClass().add("icon-button");
         btnAttach.setOnAction(e -> {
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle(b.getString("chat.attach.select"));
             List<File> files = chooser.showOpenMultipleDialog(stage);
-            if (files != null) {
+            if (files != null && !files.isEmpty()) {
                 selectedFiles.addAll(files);
-                pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("chat.attach.added").replace("{0}", String.valueOf(files.size())));
+                pop.mostrarAlertaInformativa(b.getString("common.info"),
+                        b.getString("chat.attach.added").replace("{0}", String.valueOf(files.size())));
+                updateIcons();  // Actualizar iconos después de seleccionar
             }
         });
 
@@ -274,6 +280,7 @@ public class ChatWindow {
 
             // Limpiar los archivos seleccionados
             selectedFiles.clear();
+            updateIcons();
         });
 
         btnResponder = new Button(b.getString("chat.button.reply"));
@@ -522,9 +529,13 @@ public class ChatWindow {
         ImageView ivTimer = (ImageView) mbTimer.getGraphic();
         ivTimer.setImage(timerActivo ? icoTimerOn : (isDark() ? icoTimerDark : icoTimer));
 
-        /* Adjuntar (no tiene estado ON) */
+        /* Adjuntar: rojo si hay archivos seleccionados */
         ImageView ivAttach = (ImageView) btnAttach.getGraphic();
-        ivAttach.setImage(isDark() ? icoAttachDark : icoAttach);
+        if (!selectedFiles.isEmpty()) {
+            ivAttach.setImage(icoAttachOn); // Icono rojo
+        } else {
+            ivAttach.setImage(isDark() ? icoAttachDark : icoAttach);
+        }
     }
 
     private boolean isDark() {
