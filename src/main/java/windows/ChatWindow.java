@@ -89,6 +89,17 @@ public class ChatWindow {
     /* =================================================================================== */
     public void show() {
         stage = new Stage();
+
+        try {
+            Image appIcon = new Image(Objects.requireNonNull(
+                    getClass().getResourceAsStream("/assets/logo.png")
+            ));
+            stage.getIcons().add(appIcon);
+        } catch (Exception e) {
+            System.err.println("Error cargando icono: " + e.getMessage());
+        }
+
+
         ResourceBundle b = LocaleManager.bundle();
 
         /* ───────── CABECERA ───────── */
@@ -149,7 +160,8 @@ public class ChatWindow {
                 .thenApply(HttpResponse::body)
                 .thenApply(body -> {
                     try {
-                        return mapper.readValue(body, new com.fasterxml.jackson.core.type.TypeReference<List<AdjuntoDTO>>() {});
+                        return mapper.readValue(body, new com.fasterxml.jackson.core.type.TypeReference<List<AdjuntoDTO>>() {
+                        });
                     } catch (Exception e) {
                         return List.<AdjuntoDTO>of();
                     }

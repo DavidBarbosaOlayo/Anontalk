@@ -28,6 +28,15 @@ public class SplashWindow {
     public void showSplash(Consumer<ConfigurableApplicationContext> onFinished) {
         splashStage = new Stage(StageStyle.UNDECORATED);
 
+        try {
+            Image appIcon = new Image(Objects.requireNonNull(
+                    getClass().getResourceAsStream("/assets/logo.png")
+            ));
+            splashStage.getIcons().add(appIcon);
+        } catch (Exception e) {
+            System.err.println("Error cargando icono de splash: " + e.getMessage());
+        }
+
         /* ---------- Logo ---------- */
         Image logo = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/logo.png")));
         ImageView logoView = new ImageView(logo);

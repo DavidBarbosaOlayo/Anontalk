@@ -11,6 +11,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
@@ -40,6 +41,7 @@ import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.text.MessageFormat;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 @SpringBootApplication(scanBasePackages = {"windows", "managers.mensajes", "managers.users", "security.passwords"})
@@ -82,6 +84,15 @@ public class LoginWindow extends Application {
             Platform.exit();
             System.exit(0);
         });
+
+        try {
+            Image appIcon = new Image(Objects.requireNonNull(
+                    getClass().getResourceAsStream("/assets/logo.png")
+            ));
+            stage.getIcons().add(appIcon);
+        } catch (Exception e) {
+            System.err.println("Error cargando icono: " + e.getMessage());
+        }
 
         // --- Construcción de la UI ---
         Label lblTitle = new Label(b.getString("login.appName"));

@@ -11,6 +11,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -23,6 +24,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.text.MessageFormat;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 public class ProfileWindow extends Stage {
@@ -66,6 +68,15 @@ public class ProfileWindow extends Stage {
         sc.getStylesheets().setAll(tm.getCss());
         tm.themeProperty().addListener((o, oldT, n) -> sc.getStylesheets().setAll(tm.getCss()));
         setScene(sc);
+
+        try {
+            Image appIcon = new Image(Objects.requireNonNull(
+                    getClass().getResourceAsStream("/assets/logo.png")
+            ));
+            getIcons().add(appIcon);
+        } catch (Exception e) {
+            System.err.println("Error cargando icono: " + e.getMessage());
+        }
 
         /* -------- listener de idioma -------- */
         LocaleManager.localeProperty().addListener((o, oldL, newL) -> refreshTexts());

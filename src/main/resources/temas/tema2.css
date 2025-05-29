@@ -286,6 +286,7 @@
 .tool-button {
     -fx-background-color: transparent;
     -fx-padding: 0 4 0 0;
+    -fx-text-fill: white;
 }
 
 /* tamaño del cuerpo del mensaje ─ antes 14 px */

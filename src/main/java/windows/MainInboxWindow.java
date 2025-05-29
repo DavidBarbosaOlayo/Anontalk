@@ -119,6 +119,16 @@ public class MainInboxWindow extends Application {
     public void start(Stage stage) {
         this.stage = stage;
 
+        try {
+            Image appIcon = new Image(Objects.requireNonNull(
+                    getClass().getResourceAsStream("/assets/logo.png")
+            ));
+            stage.getIcons().clear();
+            stage.getIcons().add(appIcon);
+        } catch (Exception e) {
+            // Manejo de error
+        }
+
         /* idioma por defecto */
         LocaleManager.localeProperty().addListener((o, oldL, newL) -> {
             refreshTexts();
