@@ -192,10 +192,15 @@ public class MainInboxWindow extends Application {
         settingsIconView = new ImageView(darkTheme ? settingsIconDark : settingsIconLight);
 
         idiomaMenu = new Menu();
-        idiomaMenu.getItems().addAll(new MenuItem(), new MenuItem(), new MenuItem());
+        idiomaMenu.getItems().addAll(new MenuItem(), new MenuItem(), new MenuItem(), new MenuItem(), new MenuItem(), new MenuItem(), new MenuItem(), new MenuItem());
         idiomaMenu.getItems().get(0).setOnAction(e -> LocaleManager.setLocale(new Locale("es", "ES")));
         idiomaMenu.getItems().get(1).setOnAction(e -> LocaleManager.setLocale(new Locale("ca", "ES")));
         idiomaMenu.getItems().get(2).setOnAction(e -> LocaleManager.setLocale(Locale.ENGLISH));
+        idiomaMenu.getItems().get(3).setOnAction(e -> LocaleManager.setLocale(new Locale("fr", "FR")));
+        idiomaMenu.getItems().get(4).setOnAction(e -> LocaleManager.setLocale(new Locale("it", "IT")));
+        idiomaMenu.getItems().get(5).setOnAction(e -> LocaleManager.setLocale(new Locale("pt", "PT")));
+        idiomaMenu.getItems().get(6).setOnAction(e -> LocaleManager.setLocale(new Locale("nl", "NL")));
+        idiomaMenu.getItems().get(7).setOnAction(e -> LocaleManager.setLocale(new Locale("de", "DE")));
 
         temaMenu = new Menu();
         temaMenu.getItems().addAll(new MenuItem(), new MenuItem());
@@ -229,6 +234,12 @@ public class MainInboxWindow extends Application {
         idiomaMenu.getItems().get(0).setText(bundle().getString("menu.language.spanish"));
         idiomaMenu.getItems().get(1).setText(bundle().getString("menu.language.catalan"));
         idiomaMenu.getItems().get(2).setText(bundle().getString("menu.language.english"));
+        idiomaMenu.getItems().get(3).setText(bundle().getString("menu.language.french")); // AÑADIR ESTA LÍNEA
+        idiomaMenu.getItems().get(4).setText(bundle().getString("menu.language.italian")); // AÑADIR ESTA LÍNEA
+        idiomaMenu.getItems().get(5).setText(bundle().getString("menu.language.portuguese")); // AÑADIR ESTA LÍNEA
+        idiomaMenu.getItems().get(6).setText(bundle().getString("menu.language.dutch")); // AÑADIR ESTA LÍNEA
+        idiomaMenu.getItems().get(7).setText(bundle().getString("menu.language.german")); // AÑADIR ESTA LÍNEA
+
         idiomaMenu.setText(bundle().getString("menu.language"));
 
         temaMenu.getItems().get(0).setText(bundle().getString("menu.theme.dark"));
@@ -285,6 +296,12 @@ public class MainInboxWindow extends Application {
         idiomaMenu.getItems().get(0).setText(b.getString("menu.language.spanish"));
         idiomaMenu.getItems().get(1).setText(b.getString("menu.language.catalan"));
         idiomaMenu.getItems().get(2).setText(b.getString("menu.language.english"));
+        idiomaMenu.getItems().get(3).setText(b.getString("menu.language.french")); // AÑADIR ESTA LÍNEA
+        idiomaMenu.getItems().get(4).setText(b.getString("menu.language.italian")); // AÑADIR ESTA LÍNEA
+        idiomaMenu.getItems().get(5).setText(b.getString("menu.language.portuguese")); // AÑADIR ESTA LÍNEA
+        idiomaMenu.getItems().get(6).setText(b.getString("menu.language.dutch")); // AÑADIR ESTA LÍNEA
+        idiomaMenu.getItems().get(7).setText(b.getString("menu.language.german")); // AÑADIR ESTA LÍNEA
+
 
         temaMenu.setText(b.getString("menu.theme"));
         temaMenu.getItems().get(0).setText(b.getString("menu.theme.dark"));
