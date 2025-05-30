@@ -111,6 +111,7 @@ public class MainInboxWindow extends Application {
     private Scene scene;
     private double xOffset, yOffset;          // drag-window
     private boolean encryptNew = false;
+    private String timerSelection = "";
 
     public MainInboxWindow(String currentUser, ConfigurableApplicationContext springCtx) {
         this.currentUser = currentUser;
@@ -470,84 +471,107 @@ public class MainInboxWindow extends Application {
      * • No es modal → el usuario puede cambiar idioma/tema mientras está abierta.
      * • Refresca textos e iconos en caliente.
      */
+    /**
+     * Muestra la ventana “Redactar mensaje” con:
+     * - Traducción en caliente de todos los textos
+     * - Estado persistente de cifrado, temporizador y adjuntos
+     * - Resaltado de iconos sólo cuando corresponde
+     */
     private void showSendDialog() {
-        encryptNew = false;                      // estado inicial
+        // Estado inicial
+        encryptNew = false;
+        List<File> newSelectedFiled = new ArrayList<>();
 
-        List<File> selectedFiles = new ArrayList<>();
+        // FileChooser para adjuntos
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle(bundle().getString("chat.attach.select"));
+
+        // Crear diálogo
         Stage dlg = new Stage();
         dlg.initOwner(stage);
-
+        dlg.initModality(Modality.NONE);
         try {
             Image appIcon = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/logo.png")));
-            dlg.getIcons().clear();
-            dlg.getIcons().add(appIcon);
-        } catch (Exception e) {
-            // Manejo de error silencioso si no se puede cargar el icono
+            dlg.getIcons().setAll(appIcon);
+        } catch (Exception ignored) {
         }
 
-        /* ---------- NODOS PRINCIPALES ---------- */
+        // Campos de mensaje
         TextField txtTo = new TextField();
         TextField txtSubj = new TextField();
         TextArea txtBody = new TextArea();
         txtBody.getStyleClass().add("chat-textarea");
         txtBody.setWrapText(true);
         txtBody.setPrefRowCount(10);
+
+        // Header
         VBox header = new VBox(8, txtTo, txtSubj);
         header.setPadding(new Insets(0, 0, 10, 0));
         VBox.setVgrow(txtBody, Priority.ALWAYS);
 
-        /* ---------- ICONOS / TOOLS ---------- */
+        // Botón cifrado + label
         Button btnEncrypt = new Button(null, new ImageView(darkTheme ? icoEncryptDark : icoEncrypt));
         btnEncrypt.getStyleClass().add("icon-button");
         Label lblEncrypt = new Label();
         lblEncrypt.getStyleClass().add("tool-label");
 
+        // Menú temporizador + label
         MenuButton mbTimer = new MenuButton(null, new ImageView(darkTheme ? icoTimerDark : icoTimer));
         mbTimer.getStyleClass().add("icon-button");
         Label lblTimer = new Label();
         lblTimer.getStyleClass().add("tool-label");
 
+        // Botón adjuntos + label
         Button btnAttach = new Button(null, new ImageView(darkTheme ? icoAttachDark : icoAttach));
         btnAttach.getStyleClass().add("icon-button");
-        btnAttach.setOnAction(e -> {
-            List<File> files = fileChooser.showOpenMultipleDialog(dlg);
-            if (files != null && !files.isEmpty()) {
-                selectedFiles.clear();
-                selectedFiles.addAll(files);
-                pop.mostrarAlertaInformativa(bundle().getString("common.info"), MessageFormat.format(bundle().getString("chat.attach.added"), files.size()));
-            }
-            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
+        Label lblAttach = new Label();
+        lblAttach.getStyleClass().add("tool-label");
+
+        // Textos por defecto (se retraducirán en caliente)
+        lblEncrypt.setText(bundle().getString("chat.encrypt.off"));
+        lblTimer.setText(bundle().getString("chat.timer.off"));
+        lblAttach.setText(bundle().getString("chat.attach.off"));
+
+        // Handler cifrado
+        btnEncrypt.setOnAction(e -> {
+            encryptNew = !encryptNew;
+            lblEncrypt.setText(bundle().getString(encryptNew ? "chat.encrypt.on" : "chat.encrypt.off"));
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, newSelectedFiled);
         });
 
-
-        /* ---- Timer items ---- */
-        MenuItem miTimerOff = new MenuItem();
+        // Handler temporizador: OFF
+        MenuItem miTimerOff = new MenuItem(bundle().getString("chat.timer.off"));
+        miTimerOff.setOnAction(e -> {
+            timerSelection = "";
+            lblTimer.setText(bundle().getString("chat.timer.off"));
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, newSelectedFiled);
+        });
         mbTimer.getItems().add(miTimerOff);
+
+        // Opciones de temporizador
         for (String t : new String[]{"30 s", "1 min", "5 min", "30 min"}) {
             MenuItem mi = new MenuItem(t);
-            mi.setOnAction(e -> {
+            mi.setOnAction(evt -> {
+                timerSelection = t;
                 lblTimer.setText(t);
-                updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
+                updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, newSelectedFiled);
             });
             mbTimer.getItems().add(mi);
         }
 
-        /* ---- Encrypt toggle ---- */
-        btnEncrypt.setOnAction(e -> {
-            encryptNew = !encryptNew;
-            lblEncrypt.setText(bundle().getString(encryptNew ? "chat.encrypt.on" : "chat.encrypt.off"));
-            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
+        // Handler adjuntos
+        btnAttach.setOnAction(e -> {
+            List<File> files = fileChooser.showOpenMultipleDialog(dlg);
+            if (files != null && !files.isEmpty()) {
+                newSelectedFiled.clear();
+                newSelectedFiled.addAll(files);
+                pop.mostrarAlertaInformativa(bundle().getString("common.info"), MessageFormat.format(bundle().getString("chat.attach.added"), files.size()));
+                lblAttach.setText(MessageFormat.format(bundle().getString("chat.attach.added"), newSelectedFiled.size()));
+            }
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, newSelectedFiled);
         });
 
-        /* ---- Timer OFF ---- */
-        miTimerOff.setOnAction(e -> {
-            lblTimer.setText("");
-            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
-        });
-
-        /* ---- Tools grid ---- */
+        // GridTool
         GridPane tools = new GridPane();
         tools.setHgap(14);
         tools.setVgap(2);
@@ -562,114 +586,106 @@ public class MainInboxWindow extends Application {
         tools.add(btnAttach, 2, 0);
         tools.add(lblEncrypt, 0, 1);
         tools.add(lblTimer, 1, 1);
+        tools.add(lblAttach, 2, 1);
 
-        /* ---------- BOTONES ---------- */
-        Button btnSend = new Button();
-        Button btnCanc = new Button();
+        // Botones enviar / cancelar
+        Button btnSend = new Button(bundle().getString("dialog.newMessage.button.send"));
+        Button btnCanc = new Button(bundle().getString("dialog.newMessage.button.cancel"));
         btnCanc.setOnAction(e -> dlg.close());
 
-        /* ========== ENVÍO ========== */
+        // Acción enviar
         btnSend.setOnAction(e -> {
-            String dest = txtTo.getText().trim();
-            String plain = txtBody.getText().trim();
             ResourceBundle b = bundle();
+            String dest = txtTo.getText().trim();
+            String subj = txtSubj.getText().trim();
+            String plain = txtBody.getText().trim();
 
             if (dest.isBlank() || plain.isBlank()) {
                 pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.incomplete"));
                 return;
             }
 
+            // Construcción y envío del DTO en background
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    // 1) Obtener clave pública
+                    HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + dest + "/publicKey")).GET().build();
+                    HttpResponse<String> pkRes = http.send(pkReq, HttpResponse.BodyHandlers.ofString());
 
-            try {
-                /* 1) clave pública destinatario */
-                HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + dest + "/publicKey")).GET().build();
-                HttpResponse<String> pkRes = http.send(pkReq, HttpResponse.BodyHandlers.ofString());
+                    if (pkRes.statusCode() == 404) {
+                        Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), MessageFormat.format(b.getString("dialog.newMessage.error.unknownUser"), dest)));
+                        return null;
+                    }
+                    if (pkRes.statusCode() != 200) {
+                        Platform.runLater(() -> pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.server")));
+                        return null;
+                    }
 
-                if (pkRes.statusCode() == 404) {
-                    pop.mostrarAlertaError(b.getString("common.error"), MessageFormat.format(b.getString("dialog.newMessage.error.unknownUser"), dest));
-                    return;
-                }
-                if (pkRes.statusCode() != 200) {
-                    pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.server"));
-                    return;
-                }
+                    // 2) Crear DTO
+                    MensajeDTO dto = new MensajeDTO();
+                    dto.setRemitente(currentUser);
+                    dto.setDestinatario(dest);
+                    dto.setAsunto(subj);
 
-                /* 2) DTO */
-                MensajeDTO dto = new MensajeDTO();
-                dto.setRemitente(currentUser);
-                dto.setDestinatario(dest);
-                dto.setAsunto(txtSubj.getText().trim());
+                    if (!timerSelection.isEmpty()) {
+                        dto.setExpiryDate(calculateExpiry(timerSelection));
+                    }
 
-                String timerSelection = lblTimer.getText();
-                if (!timerSelection.isEmpty()) {
-                    dto.setExpiryDate(calculateExpiry(timerSelection));
-                }
-
-                if (encryptNew) {
-                    PublicKey pkDest = RSAUtils.publicKeyFromBase64(pkRes.body());
-                    var p = HybridCrypto.encrypt(plain, pkDest);
-                    dto.setCipherTextBase64(p.cipherB64());
-                    dto.setEncKeyBase64(p.encKeyB64());
-                    dto.setIvBase64(p.ivB64());
-                } else {
-                    dto.setCipherTextBase64(Base64.getEncoder().encodeToString(plain.getBytes(StandardCharsets.UTF_8)));
-                    dto.setEncKeyBase64(null);
-                    dto.setIvBase64(null);
-                }
-
-                // 2.1) Adjuntos
-                List<AdjuntoDTO> adjuntosDto = new ArrayList<>();
-                for (File file : selectedFiles) {
-                    byte[] fileBytes = Files.readAllBytes(file.toPath());
-                    String filename = file.getName();
-                    String mimeType = Files.probeContentType(file.toPath());
-
-                    String cipherB64, encKeyB64, ivB64;
                     if (encryptNew) {
-                        // cifrar el contenido Base64 del fichero
-                        PublicKey destPk = RSAUtils.publicKeyFromBase64(pkRes.body());
-                        String fileBase64 = Base64.getEncoder().encodeToString(fileBytes);
-                        HybridCrypto.HybridPayload p = HybridCrypto.encrypt(fileBase64, destPk);
-                        cipherB64 = p.cipherB64();
-                        encKeyB64 = p.encKeyB64();
-                        ivB64 = p.ivB64();
+                        PublicKey pkDest = RSAUtils.publicKeyFromBase64(pkRes.body());
+                        var p = HybridCrypto.encrypt(plain, pkDest);
+                        dto.setCipherTextBase64(p.cipherB64());
+                        dto.setEncKeyBase64(p.encKeyB64());
+                        dto.setIvBase64(p.ivB64());
                     } else {
-                        cipherB64 = Base64.getEncoder().encodeToString(fileBytes);
-                        encKeyB64 = null;
-                        ivB64 = null;
+                        dto.setCipherTextBase64(Base64.getEncoder().encodeToString(plain.getBytes(StandardCharsets.UTF_8)));
+                        dto.setEncKeyBase64(null);
+                        dto.setIvBase64(null);
                     }
 
-                    adjuntosDto.add(new AdjuntoDTO(filename, mimeType, cipherB64, encKeyB64, ivB64));
+                    // Adjuntos
+                    List<AdjuntoDTO> adjDTOs = new ArrayList<>();
+                    for (File file : newSelectedFiled) {
+                        byte[] bytes = Files.readAllBytes(file.toPath());
+                        String mime = Files.probeContentType(file.toPath());
+                        if (encryptNew) {
+                            PublicKey pkDest = RSAUtils.publicKeyFromBase64(pkRes.body());
+                            String b64 = Base64.getEncoder().encodeToString(bytes);
+                            var p = HybridCrypto.encrypt(b64, pkDest);
+                            adjDTOs.add(new AdjuntoDTO(file.getName(), mime, p.cipherB64(), p.encKeyB64(), p.ivB64()));
+                        } else {
+                            adjDTOs.add(new AdjuntoDTO(file.getName(), mime, Base64.getEncoder().encodeToString(bytes), null, null));
+                        }
+                    }
+                    dto.setAdjuntos(adjDTOs);
+
+                    // 3) Envío HTTP
+                    String json = mapper.writeValueAsString(dto);
+                    HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
+                    http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(res -> Platform.runLater(() -> {
+                        if (res.statusCode() == 200) {
+                            refreshSent();
+                            dlg.close();
+                            pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("dialog.newMessage.info.sent"));
+                        } else {
+                            pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.send"));
+                        }
+                    }));
+
+                    return null;
                 }
-                dto.setAdjuntos(adjuntosDto);
-
-                /* 3) POST */
-                String json = mapper.writeValueAsString(dto);
-                HttpRequest req = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/send")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
-
-                http.sendAsync(req, HttpResponse.BodyHandlers.ofString()).thenAccept(res -> Platform.runLater(() -> {
-                    if (res.statusCode() == 200) {
-                        refreshSent();
-                        dlg.close();
-                        pop.mostrarAlertaInformativa(b.getString("common.success"), b.getString("dialog.newMessage.info.sent"));
-                    } else {
-                        pop.mostrarAlertaError(b.getString("common.error"), b.getString("dialog.newMessage.error.send"));
-                    }
-                }));
-
-            } catch (Exception ex) {
-                pop.mostrarAlertaError(bundle().getString("common.error"), bundle().getString("dialog.newMessage.error.encrypt"));
-            }
+            };
+            MainApp.Background.POOL.submit(task);
         });
 
-        /* ---------- BARRA INFERIOR ---------- */
+        // Layout
         Region stretch = new Region();
         HBox.setHgrow(stretch, Priority.ALWAYS);
         HBox bottom = new HBox(10, tools, stretch, btnSend, btnCanc);
         bottom.setAlignment(Pos.CENTER_LEFT);
         bottom.setPadding(new Insets(10, 0, 0, 0));
 
-        /* ---------- ROOT / SCENE ---------- */
         BorderPane root = new BorderPane(txtBody);
         root.setTop(header);
         root.setBottom(bottom);
@@ -678,33 +694,34 @@ public class MainInboxWindow extends Application {
         Scene sc = new Scene(root, 560, 460);
         sc.getStylesheets().setAll(ThemeManager.getInstance().getCss());
 
-        /* --- Tema en caliente --- */
-        ThemeManager.getInstance().themeProperty().addListener((o, oldT, n) -> {
+        // Tema en caliente
+        ThemeManager.getInstance().themeProperty().addListener((o, oldT, newT) -> {
             sc.getStylesheets().setAll(ThemeManager.getInstance().getCss());
-            darkTheme = "dark".equals(n);
-            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
+            darkTheme = "dark".equals(newT);
+            updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, newSelectedFiled);
         });
 
-        /* --- TEXTOS en caliente --- */
+        // Textos en caliente
         Runnable refreshTexts = () -> {
             ResourceBundle b = bundle();
             dlg.setTitle(b.getString("dialog.newMessage.title"));
             txtTo.setPromptText(b.getString("dialog.newMessage.field.to"));
             txtSubj.setPromptText(b.getString("dialog.newMessage.field.subject"));
             txtBody.setPromptText(b.getString("dialog.newMessage.field.body"));
-            lblEncrypt.setText(b.getString(encryptNew ? "chat.encrypt.on" : "chat.encrypt.off"));
-            miTimerOff.setText(b.getString("chat.timer.off"));
             btnSend.setText(b.getString("dialog.newMessage.button.send"));
             btnCanc.setText(b.getString("dialog.newMessage.button.cancel"));
+            lblEncrypt.setText(b.getString(encryptNew ? "chat.encrypt.on" : "chat.encrypt.off"));
+            miTimerOff.setText(b.getString("chat.timer.off"));
+            lblTimer.setText(timerSelection.isEmpty() ? b.getString("chat.timer.off") : timerSelection);
+            lblAttach.setText(newSelectedFiled.isEmpty() ? b.getString("chat.attach.off") : MessageFormat.format(b.getString("chat.attach.added"), newSelectedFiled.size()));
         };
         refreshTexts.run();
-
         ChangeListener<Locale> locL = (o, oldL, newL) -> refreshTexts.run();
         LocaleManager.localeProperty().addListener(locL);
         dlg.setOnHidden(e -> LocaleManager.localeProperty().removeListener(locL));
 
-        /* --- Iconos iniciales --- */
-        updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, selectedFiles);
+        // Inicializar iconos
+        updateSendIcons(btnEncrypt, mbTimer, btnAttach, lblTimer, newSelectedFiled);
 
         dlg.setScene(sc);
         dlg.show();
@@ -727,20 +744,18 @@ public class MainInboxWindow extends Application {
         }
     }
 
-    private void updateSendIcons(Button btnEncrypt, MenuButton mbTimer, Button btnAttach, Label lblTimer, List<File> selectedFiles) {
-        /* 🔒  Candado */
+    private void updateSendIcons(Button btnEncrypt, MenuButton mbTimer, Button btnAttach, Label lblTimer, List<File> newSelectedFiled) {
         ((ImageView) btnEncrypt.getGraphic()).setImage(encryptNew ? icoEncryptOn : (darkTheme ? icoEncryptDark : icoEncrypt));
 
-        /* ⏳  Temporizador */
-        boolean timerActivo = !lblTimer.getText().isBlank();
+        ResourceBundle b = bundle();
+        boolean timerActivo = !lblTimer.getText().equals(b.getString("chat.timer.off"));
         ((ImageView) mbTimer.getGraphic()).setImage(timerActivo ? icoTimerOn : (darkTheme ? icoTimerDark : icoTimer));
 
-        /* 📎  Adjuntar: rojo si hay archivos seleccionados */
-        ImageView attachIcon = (ImageView) btnAttach.getGraphic();
-        if (!selectedFiles.isEmpty()) {
-            attachIcon.setImage(icoAttachOn); // Icono rojo
+        ImageView ivAttach = (ImageView) btnAttach.getGraphic();
+        if (!newSelectedFiled.isEmpty()) {
+            ivAttach.setImage(icoAttachOn);
         } else {
-            attachIcon.setImage(darkTheme ? icoAttachDark : icoAttach);
+            ivAttach.setImage(darkTheme ? icoAttachDark : icoAttach);
         }
     }
 

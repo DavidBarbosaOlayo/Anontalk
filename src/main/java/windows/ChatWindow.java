@@ -59,6 +59,8 @@ public class ChatWindow {
     private TextArea txtReply;
     private Label lblEncryptState;
     private Label lblTimerState;
+    private Label lblAttachState;
+    private String timerSelection = "";
     private MenuButton mbTimer;
     private Button btnEncrypt, btnAttach, btnSend, btnClose, btnResponder;
     private MenuItem miTimerOff;
@@ -84,7 +86,7 @@ public class ChatWindow {
     public ChatWindow(String currentUser, Mensaje mensaje) {
         this.currentUser = currentUser;
         this.mensaje = mensaje;
-        this.chooser =  new FileChooser();
+        this.chooser = new FileChooser();
     }
 
     /* =================================================================================== */
@@ -94,14 +96,11 @@ public class ChatWindow {
         stage = new Stage();
 
         try {
-            Image appIcon = new Image(Objects.requireNonNull(
-                    getClass().getResourceAsStream("/assets/logo.png")
-            ));
+            Image appIcon = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/logo.png")));
             stage.getIcons().add(appIcon);
         } catch (Exception e) {
             System.err.println("Error cargando icono: " + e.getMessage());
         }
-
 
         ResourceBundle b = LocaleManager.bundle();
 
@@ -139,12 +138,11 @@ public class ChatWindow {
         chatScrollPane.setFitToWidth(true);
         chatScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         chatScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        chatScrollPane.getStyleClass().add("chat-area"); // Borde del área de chat
+        chatScrollPane.getStyleClass().add("chat-area");
 
         /* ─── SECCIÓN DE ADJUNTOS (recibidos) ───────────────────────── */
         VBox attachmentsSection = new VBox(4);
 
-        // Manejo seguro de recursos internacionalizados
         String loadingText;
         try {
             loadingText = b.getString("common.info") + ": " + b.getString("chat.attachments.loading");
@@ -152,40 +150,33 @@ public class ChatWindow {
             loadingText = "Loading attachments...";
         }
         Label loading = new Label(loadingText);
-
         attachmentsSection.getChildren().add(loading);
 
-        // Carga asíncrona de adjuntos
-        HttpRequest attReq = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:8080/api/messages/" + mensaje.getId() + "/attachments"))
-                .GET().build();
-        http.sendAsync(attReq, HttpResponse.BodyHandlers.ofString())
-                .thenApply(HttpResponse::body)
-                .thenApply(body -> {
-                    try {
-                        return mapper.readValue(body, new com.fasterxml.jackson.core.type.TypeReference<List<AdjuntoDTO>>() {
-                        });
-                    } catch (Exception e) {
-                        return List.<AdjuntoDTO>of();
-                    }
-                })
-                .thenAccept(adjList -> Platform.runLater(() -> {
-                    attachmentsSection.getChildren().clear();
-                    if (adjList.isEmpty()) {
-                        return;
-                    }
+        HttpRequest attReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/messages/" + mensaje.getId() + "/attachments")).GET().build();
+        http.sendAsync(attReq, HttpResponse.BodyHandlers.ofString()).thenApply(HttpResponse::body).thenApply(body -> {
+            try {
+                return mapper.readValue(body, new com.fasterxml.jackson.core.type.TypeReference<List<AdjuntoDTO>>() {
+                });
+            } catch (Exception e) {
+                return List.<AdjuntoDTO>of();
+            }
+        }).thenAccept(adjList -> Platform.runLater(() -> {
+            attachmentsSection.getChildren().clear();
+            if (adjList.isEmpty()) {
+                return;
+            }
 
-                    Label lblAtt = new Label(b.getString("chat.header.attachments"));
-                    lblAtt.getStyleClass().add("chat-header-line");
-                    attachmentsSection.getChildren().add(lblAtt);
+            Label lblAtt = new Label(b.getString("chat.header.attachments"));
+            lblAtt.getStyleClass().add("chat-header-line");
+            attachmentsSection.getChildren().add(lblAtt);
 
-                    for (AdjuntoDTO a : adjList) {
-                        Button btnFile = new Button(a.getFilename());
-                        btnFile.getStyleClass().add("tool-button");
-                        btnFile.setOnAction(evt -> downloadAttachment(a));
-                        attachmentsSection.getChildren().add(btnFile);
-                    }
-                }));
+            for (AdjuntoDTO a : adjList) {
+                Button btnFile = new Button(a.getFilename());
+                btnFile.getStyleClass().add("tool-button");
+                btnFile.setOnAction(evt -> downloadAttachment(a));
+                attachmentsSection.getChildren().add(btnFile);
+            }
+        }));
 
         /* ========== ÁREA DE RESPUESTA (oculta) ========== */
         btnEncrypt = new Button(null, new ImageView(icoEncrypt));
@@ -200,35 +191,39 @@ public class ChatWindow {
 
         mbTimer = new MenuButton(null, new ImageView(icoTimer));
         mbTimer.getStyleClass().add("icon-button");
-        lblTimerState = new Label();
+        lblTimerState = new Label(b.getString("chat.timer.off"));
         lblTimerState.getStyleClass().add("tool-label");
         miTimerOff = new MenuItem(b.getString("chat.timer.off"));
         miTimerOff.setOnAction(ev -> {
-            lblTimerState.setText("");
+            timerSelection = "";
+            lblTimerState.setText(b.getString("chat.timer.off"));
             updateIcons();
         });
         mbTimer.getItems().add(miTimerOff);
         for (String o : new String[]{"30 s", "1 min", "5 min", "30 min"}) {
             MenuItem it = new MenuItem(o);
             it.setOnAction(ev -> {
+                timerSelection = o;
                 lblTimerState.setText(o);
                 updateIcons();
             });
             mbTimer.getItems().add(it);
         }
 
+        // --- Nuevo label para estado de adjuntos ---
+        lblAttachState = new Label(b.getString("chat.attach.off"));
+        lblAttachState.getStyleClass().add("tool-label");
+
         chooser.setTitle(b.getString("chat.attach.select"));
-
-
         btnAttach = new Button(null, new ImageView(icoAttach));
         btnAttach.getStyleClass().add("icon-button");
         btnAttach.setOnAction(e -> {
             List<File> files = chooser.showOpenMultipleDialog(stage);
             if (files != null && !files.isEmpty()) {
                 selectedFiles.addAll(files);
-                pop.mostrarAlertaInformativa(b.getString("common.info"),
-                        b.getString("chat.attach.added").replace("{0}", String.valueOf(files.size())));
-                updateIcons();  // Actualizar iconos después de seleccionar
+                pop.mostrarAlertaInformativa(b.getString("common.info"), b.getString("chat.attach.added").replace("{0}", String.valueOf(files.size())));
+                lblAttachState.setText(b.getString("chat.attach.added").replace("{0}", String.valueOf(selectedFiles.size())));
+                updateIcons();
             }
         });
 
@@ -246,6 +241,7 @@ public class ChatWindow {
         tools.add(btnAttach, 2, 0);
         tools.add(lblEncryptState, 0, 1);
         tools.add(lblTimerState, 1, 1);
+        tools.add(lblAttachState, 2, 1);
 
         txtReply = new TextArea();
         txtReply.setPrefRowCount(4);
@@ -263,22 +259,15 @@ public class ChatWindow {
         bottomBar.setAlignment(Pos.CENTER_LEFT);
         bottomBar.setPadding(new Insets(10));
 
-        // Declarar replyBox aquí para que sea accesible
         replyBox = new VBox(compose, bottomBar);
         replyBox.setVisible(false);
         replyBox.setManaged(false);
 
-        // Ahora que replyBox está declarada, podemos configurar el botón de cancelar
         btnClose.setOnAction(e -> {
-            // Ocultar el área de respuesta
             replyBox.setVisible(false);
             replyBox.setManaged(false);
-
-            // Mostrar nuevamente el botón de responder
             btnResponder.setVisible(true);
             btnResponder.setManaged(true);
-
-            // Limpiar los archivos seleccionados
             selectedFiles.clear();
             updateIcons();
         });
@@ -321,6 +310,7 @@ public class ChatWindow {
         stage.show();
     }
 
+
     /* =================================================================================== */
     /*                              REFRESCO DE TEXTOS                                    */
     /* =================================================================================== */
@@ -348,6 +338,17 @@ public class ChatWindow {
         lblEncryptState.setText(b.getString(encrypt ? "chat.encrypt.on" : "chat.encrypt.off"));
         miTimerOff.setText(b.getString("chat.timer.off"));
         btnResponder.setText(b.getString("chat.button.reply"));
+        if (timerSelection.isEmpty()) {
+            lblTimerState.setText(b.getString("chat.timer.off"));
+        } else {
+            lblTimerState.setText(timerSelection);
+        }
+
+        if (selectedFiles.isEmpty()) {
+            lblAttachState.setText(b.getString("chat.attach.off"));
+        } else {
+            lblAttachState.setText(MessageFormat.format(b.getString("chat.attach.added"), selectedFiles.size()));
+        }
     }
 
     /* =================================================================================== */
@@ -520,21 +521,25 @@ public class ChatWindow {
     }
 
     private void updateIcons() {
-        /* Candado */
+        // Actualización del icono de cifrado (candado)
         ImageView ivLock = (ImageView) btnEncrypt.getGraphic();
         ivLock.setImage(encrypt ? icoEncryptOn : (isDark() ? icoEncryptDark : icoEncrypt));
 
-        /* Temporizador */
-        boolean timerActivo = !lblTimerState.getText().isBlank();
+        // Actualización del icono de temporizador
+        boolean timerActivo = !timerSelection.isEmpty();
         ImageView ivTimer = (ImageView) mbTimer.getGraphic();
         ivTimer.setImage(timerActivo ? icoTimerOn : (isDark() ? icoTimerDark : icoTimer));
 
-        /* Adjuntar: rojo si hay archivos seleccionados */
+        // Actualización del icono de adjuntos
         ImageView ivAttach = (ImageView) btnAttach.getGraphic();
-        if (!selectedFiles.isEmpty()) {
-            ivAttach.setImage(icoAttachOn); // Icono rojo
+        boolean hasFiles = !selectedFiles.isEmpty();
+        ivAttach.setImage(hasFiles ? icoAttachOn : (isDark() ? icoAttachDark : icoAttach));
+
+        // Actualización del texto bajo el icono de adjuntos
+        if (hasFiles) {
+            lblAttachState.setText(LocaleManager.bundle().getString("chat.attach.added").replace("{0}", String.valueOf(selectedFiles.size())));
         } else {
-            ivAttach.setImage(isDark() ? icoAttachDark : icoAttach);
+            lblAttachState.setText(LocaleManager.bundle().getString("chat.attach.off"));
         }
     }
 
