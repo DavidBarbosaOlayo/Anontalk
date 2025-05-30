@@ -69,6 +69,7 @@ public class MainInboxWindow extends Application {
     private Menu idiomaMenu;
     private Menu temaMenu;
     private TabPane tabs;
+    private StackPane tabsWrapper;
 
     /* ======= iconos ======= */
     private final Image userIconLight = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/user.png")), 30, 30, true, true);
@@ -175,7 +176,6 @@ public class MainInboxWindow extends Application {
         /* ───────── Logo ───────── */
         logoView = new ImageView(darkTheme ? logoImgDark : logoImg);
 
-
         /* ───────── Botón Perfil ───────── */
         profileIconView = new ImageView(darkTheme ? userIconDark : userIconLight);
         Button btnPerfil = new Button(null, profileIconView);
@@ -226,17 +226,14 @@ public class MainInboxWindow extends Application {
             }
         });
 
-        idiomaMenu.getItems().get(0).setOnAction(e -> {
-            LocaleManager.setLocale(new Locale("es", "ES"));
-        });
+        idiomaMenu.getItems().get(0).setText(bundle().getString("menu.language.spanish"));
+        idiomaMenu.getItems().get(1).setText(bundle().getString("menu.language.catalan"));
+        idiomaMenu.getItems().get(2).setText(bundle().getString("menu.language.english"));
+        idiomaMenu.setText(bundle().getString("menu.language"));
 
-        idiomaMenu.getItems().get(1).setOnAction(e -> {
-            LocaleManager.setLocale(new Locale("ca", "ES"));
-        });
-
-        idiomaMenu.getItems().get(2).setOnAction(e -> {
-            LocaleManager.setLocale(Locale.ENGLISH);
-        });
+        temaMenu.getItems().get(0).setText(bundle().getString("menu.theme.dark"));
+        temaMenu.getItems().get(1).setText(bundle().getString("menu.theme.light"));
+        temaMenu.setText(bundle().getString("menu.theme"));
 
         /* ───────── Top Bar ───────── */
         HBox leftBox = new HBox(10, logoView, lblWelcome);
@@ -248,13 +245,19 @@ public class MainInboxWindow extends Application {
         topBar.setPadding(new Insets(10));
         topBar.getStyleClass().add("top-bar");
 
-        /* ───────── TabPane ───────── */
-        tabs = new TabPane(new Tab("", createTable(true)), new Tab("", createTable(false)));
+        /* ───────── TabPane + Wrapper ───────── */
+        tabs = new TabPane(new Tab(bundle().getString("tab.inbox"), createTable(true)), new Tab(bundle().getString("tab.sent"), createTable(false)));
         tabs.getTabs().forEach(t -> t.setClosable(false));
         tabs.getStyleClass().add("inbox-tabs");
 
+        // Refresca texto de pestañas al inicio
+        refreshTexts();
+
+        tabsWrapper = new StackPane(tabs);
+        tabsWrapper.setAlignment(Pos.TOP_LEFT);
+
         /* ───────── Root + drag window ───────── */
-        BorderPane root = new BorderPane(tabs);
+        BorderPane root = new BorderPane(tabsWrapper);
         root.setTop(topBar);
         root.setPadding(new Insets(10));
         root.getStyleClass().add("main-root");
@@ -270,6 +273,7 @@ public class MainInboxWindow extends Application {
 
         return root;
     }
+
 
     private void refreshTexts() {
         ResourceBundle b = bundle();
@@ -559,7 +563,6 @@ public class MainInboxWindow extends Application {
             }
 
 
-
             try {
                 /* 1) clave pública destinatario */
                 HttpRequest pkReq = HttpRequest.newBuilder().uri(URI.create("http://localhost:8080/api/users/" + dest + "/publicKey")).GET().build();
@@ -765,23 +768,22 @@ public class MainInboxWindow extends Application {
         String tabLabel = bundle().getString("tab.inbox");
 
         if (count > 0) {
-            Label name = new Label(tabLabel);
+            inboxTab.setText(tabLabel); // deja el texto como normal
+            // y creamos un círculo flotante por encima del tab
+
             Label badge = new Label(String.valueOf(count));
             badge.getStyleClass().add("badge");
+            badge.setMouseTransparent(true); // no intercepta eventos
 
-            StackPane sp = new StackPane(name, badge);
-            // Texto anclado a la izquierda
-            StackPane.setAlignment(name, Pos.CENTER_LEFT);
-            // Badge arriba-derecha
-            StackPane.setAlignment(badge, Pos.TOP_RIGHT);
-            // Lo “tira” un poco hacia arriba y a la derecha
-            StackPane.setMargin(badge, new Insets(-4, -4, 0, 0));
+            // Posicionamiento absoluto por encima de la pestaña
+            StackPane.setAlignment(badge, Pos.TOP_LEFT);
+            StackPane.setMargin(badge, new Insets(-2, 0, 0, 100));
 
-            inboxTab.setGraphic(sp);
-            inboxTab.setText(null);
+            // Asegúrate de no añadir múltiples veces
+            tabsWrapper.getChildren().removeIf(n -> n.getStyleClass().contains("badge"));
+            tabsWrapper.getChildren().add(badge);
         } else {
-            inboxTab.setGraphic(null);
-            inboxTab.setText(tabLabel);
+            tabsWrapper.getChildren().removeIf(n -> n.getStyleClass().contains("badge"));
         }
     }
 

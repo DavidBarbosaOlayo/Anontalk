@@ -355,8 +355,6 @@
     -fx-pref-height: 18px;
     -fx-padding: 0;                /* sin “acolchamiento” extra */
     -fx-background-radius: 9px;    /* la mitad de 18px */
-    -fx-border-color: white;
-    -fx-border-width: 1px;
 }
 
 
@@ -373,4 +371,10 @@
 /* Para que sólo afecte al fondo, no al contenido */
 .bandeja-tabla .table-row-cell.read-row .table-cell {
     /* no cambiamos la opacidad de celdas ni de botones */
+}
+.inbox-tabs .tab-header-area,
+.inbox-tabs .tab-header-area .headers-region {
+    /* por defecto JavaFX lo recorta, con esto permitimos que los children
+       se dibujen fuera de su propia región */
+    -fx-overflow: visible;
 }

@@ -274,10 +274,7 @@
     -fx-pref-height: 18px;
     -fx-padding: 0;                /* sin “acolchamiento” extra */
     -fx-background-radius: 9px;    /* la mitad de 18px */
-    -fx-border-color: white;
-    -fx-border-width: 1px;
 }
-
 
 /* Filas leídas: fondo más tenue, icono de papelera sin cambios */
 .bandeja-tabla .table-row-cell.read-row {
@@ -287,4 +284,8 @@
 /* Para que sólo afecte al fondo, no al contenido */
 .bandeja-tabla .table-row-cell.read-row .table-cell {
     /* no cambiamos la opacidad de celdas ni de botones */
+}
+.inbox-tabs .tab-header-area,
+.inbox-tabs .tab-header-area .headers-region {
+    -fx-overflow: visible;
 }
