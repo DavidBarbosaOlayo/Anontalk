@@ -99,9 +99,13 @@ public class MensajeService {
     }
 
 
-    @Scheduled(fixedRate = 30000) // Comprueba cada 30 segundos
+    @Scheduled(fixedRate = 30000)
+    @Transactional
     public void deleteExpiredMessages() {
-        repo.deleteByExpiryDateBefore(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        List<MensajeSB> expired = repo.findByExpiryDateBefore(now);
+        expired.forEach(repo::delete);  // dispara cascade + orphanRemoval
     }
+
 
 }

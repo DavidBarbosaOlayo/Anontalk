@@ -769,7 +769,7 @@ public class MainInboxWindow extends Application {
 
         if (count > 0) {
             inboxTab.setText(tabLabel); // deja el texto como normal
-            // y creamos un círculo flotante por encima del tab
+            //creamos un círculo flotante por encima del tab
 
             Label badge = new Label(String.valueOf(count));
             badge.getStyleClass().add("badge");
@@ -777,7 +777,7 @@ public class MainInboxWindow extends Application {
 
             // Posicionamiento absoluto por encima de la pestaña
             StackPane.setAlignment(badge, Pos.TOP_LEFT);
-            StackPane.setMargin(badge, new Insets(-2, 0, 0, 100));
+            StackPane.setMargin(badge, new Insets(-3.5f, 0, 0, 100));
 
             // Asegúrate de no añadir múltiples veces
             tabsWrapper.getChildren().removeIf(n -> n.getStyleClass().contains("badge"));

@@ -11,6 +11,7 @@ import java.util.List;
 public interface MensajeRepository extends JpaRepository<MensajeSB, Long> {
     List<MensajeSB> findByDestinatario(String destinatario);
     List<MensajeSB> findByRemitente(String remitente);
+    List<MensajeSB> findByExpiryDateBefore(LocalDateTime currentTime);
 
     @Modifying
     @Query("DELETE FROM MensajeSB m WHERE m.expiryDate < :currentTime")
