@@ -159,7 +159,10 @@ public class MainInboxWindow extends Application {
 
         /* carga + refresco periódico */
         loadMessages();
-        refresher = new Timeline(new KeyFrame(Duration.seconds(5), ev -> refreshInbox()));
+        refresher = new Timeline(new KeyFrame(Duration.seconds(5), ev -> {
+            refreshInbox();
+            refreshSent(); // Agregar esta línea para refrescar también los mensajes enviados
+        }));
         refresher.setCycleCount(Timeline.INDEFINITE);
         refresher.play();
     }
