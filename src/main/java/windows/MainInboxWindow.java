@@ -458,6 +458,14 @@ public class MainInboxWindow extends Application {
         Stage dlg = new Stage();
         dlg.initOwner(stage);
 
+        try {
+            Image appIcon = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/logo.png")));
+            dlg.getIcons().clear();
+            dlg.getIcons().add(appIcon);
+        } catch (Exception e) {
+            // Manejo de error silencioso si no se puede cargar el icono
+        }
+
         /* ---------- NODOS PRINCIPALES ---------- */
         TextField txtTo = new TextField();
         TextField txtSubj = new TextField();
