@@ -59,18 +59,22 @@
 
 /* ─── BOTONES GENERALES ───────────────────────────────────────────── */
 .button {
-    -fx-background-color: #102C54;
-    -fx-text-fill: #ffffff;
+    -fx-background-color: #e0e0e0;      /* gris muy claro */
+    -fx-text-fill: #202124;            /* texto oscuro */
     -fx-font-size: 14px;
     -fx-font-weight: bold;
     -fx-padding: 8px 15px;
     -fx-cursor: hand;
+    -fx-border-color: #888888;         /* borde gris medio */
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
 }
 .button:hover {
-    -fx-background-color: #102C90;
+    -fx-background-color: #d5d5d5;     /* un pelín más oscuro al hover */
 }
 .button:pressed {
-    -fx-background-color: #102C54;
+    -fx-background-color: #cccccc;     /* más oscuro al presionar */
 }
 
 /* ─── TABS DE BANDEJA ─────────────────────────────────────────────── */
