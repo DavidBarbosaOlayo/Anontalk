@@ -10,9 +10,11 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.concurrent.Task;
+import javafx.geometry.Bounds;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -70,6 +72,10 @@ public class MainInboxWindow extends Application {
     private Menu temaMenu;
     private TabPane tabs;
     private StackPane tabsWrapper;
+
+    // >>> CAMBIO 1: nuevos campos para la pestaña Inbox (texto + badge) <<<
+    private Label inboxTabTextLabel;
+    private Label inboxBadgeLabel;
 
     /* ======= iconos ======= */
     private final Image userIconLight = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/assets/user.png")), 30, 30, true, true);
@@ -258,9 +264,47 @@ public class MainInboxWindow extends Application {
         topBar.getStyleClass().add("top-bar");
 
         /* ───────── TabPane + Wrapper ───────── */
+
+        // >>> CAMBIO 2: Sustituir la creación original de tabs por un HBox con texto + badge <<<
+        /*
+        // Antes (eliminar o comentar):
         tabs = new TabPane(new Tab(bundle().getString("tab.inbox"), createTable(true)), new Tab(bundle().getString("tab.sent"), createTable(false)));
         tabs.getTabs().forEach(t -> t.setClosable(false));
         tabs.getStyleClass().add("inbox-tabs");
+        */
+
+        // 2.1 Creamos la tabla para la pestaña Inbox
+        TableView<Mensaje> inboxTable = createTable(true);
+
+        // 2.2 Construimos los Labels: uno para el texto, otro para el badge
+        inboxTabTextLabel = new Label(bundle().getString("tab.inbox"));
+        inboxBadgeLabel = new Label("0");                  // Empieza en “0”
+        inboxBadgeLabel.getStyleClass().add("badge");      // Aplicamos la clase .badge
+        inboxBadgeLabel.setVisible(false);                 // Oculto mientras no haya mensajes sin leer
+        inboxBadgeLabel.setManaged(false);
+
+        // 2.3 Empaquetamos ambos Labels dentro de un HBox
+        HBox inboxGraphic = new HBox(4, inboxTabTextLabel, inboxBadgeLabel);
+        inboxGraphic.setAlignment(Pos.CENTER_LEFT);
+
+        // 2.4 Creamos la pestaña Inbox y le asignamos el HBox como graphic (texto vacío)
+        Tab inboxTab = new Tab("", inboxTable);
+        inboxTab.setGraphic(inboxGraphic);
+        inboxTab.setClosable(false);
+
+        // 2.5 Ahora creamos la pestaña “Sent” (solo con texto, sin badge)
+        TableView<Mensaje> sentTable = createTable(false);
+        Label sentTabTextLabel = new Label(bundle().getString("tab.sent"));
+        HBox sentGraphic = new HBox(4, sentTabTextLabel);
+        sentGraphic.setAlignment(Pos.CENTER_LEFT);
+        Tab sentTab = new Tab("", sentTable);
+        sentTab.setGraphic(sentGraphic);
+        sentTab.setClosable(false);
+
+        // 2.6 Finalmente, instanciamos el TabPane con ambas pestañas
+        tabs = new TabPane(inboxTab, sentTab);
+        tabs.getStyleClass().add("inbox-tabs");
+        // <<< FIN CAMBIO 2 >>>
 
         // Refresca texto de pestañas al inicio
         refreshTexts();
@@ -303,16 +347,22 @@ public class MainInboxWindow extends Application {
         idiomaMenu.getItems().get(6).setText(b.getString("menu.language.dutch")); // AÑADIR ESTA LÍNEA
         idiomaMenu.getItems().get(7).setText(b.getString("menu.language.german")); // AÑADIR ESTA LÍNEA
 
-
         temaMenu.setText(b.getString("menu.theme"));
         temaMenu.getItems().get(0).setText(b.getString("menu.theme.dark"));
         temaMenu.getItems().get(1).setText(b.getString("menu.theme.light"));
 
-        tabs.getTabs().get(0).setText(b.getString("tab.inbox"));
-        tabs.getTabs().get(1).setText(b.getString("tab.sent"));
+        // >>> CAMBIO 3: en lugar de tabs.getTabs().get(0).setText(...), actualizamos el Label <<<
+        inboxTabTextLabel.setText(b.getString("tab.inbox"));
+
+        // Para la pestaña "Sent", obtenemos el Label interno del graphic:
+        HBox sentGraphic = (HBox) tabs.getTabs().get(1).getGraphic();
+        Label sentTabTextLabel = (Label) sentGraphic.getChildren().get(0);
+        sentTabTextLabel.setText(b.getString("tab.sent"));
+        // <<< FIN CAMBIO 3 >>>
 
         updateTableTexts((TableView<?>) tabs.getTabs().get(0).getContent(), true);
         updateTableTexts((TableView<?>) tabs.getTabs().get(1).getContent(), false);
+
     }
 
     private void updateTableTexts(TableView<?> tv, boolean inbox) {
@@ -728,8 +778,8 @@ public class MainInboxWindow extends Application {
     }
 
     // -------------------------------------------------------------
-//  Descifra o simplemente decodifica Base64 según corresponda
-// -------------------------------------------------------------
+    //  Descifra o simplemente decodifica Base64 según corresponda
+    // -------------------------------------------------------------
     private String decodeBody(MensajeDTO dto) {
         ResourceBundle b = bundle();
         try {
@@ -796,26 +846,13 @@ public class MainInboxWindow extends Application {
     }
 
     private void updateInboxTabBadge(long count) {
-        Tab inboxTab = tabs.getTabs().get(0);
-        String tabLabel = bundle().getString("tab.inbox");
-
-        if (count > 0) {
-            inboxTab.setText(tabLabel); // deja el texto como normal
-            //creamos un círculo flotante por encima del tab
-
-            Label badge = new Label(String.valueOf(count));
-            badge.getStyleClass().add("badge");
-            badge.setMouseTransparent(true); // no intercepta eventos
-
-            // Posicionamiento absoluto por encima de la pestaña
-            StackPane.setAlignment(badge, Pos.TOP_LEFT);
-            StackPane.setMargin(badge, new Insets(-3.5f, 0, 0, 100));
-
-            // Asegúrate de no añadir múltiples veces
-            tabsWrapper.getChildren().removeIf(n -> n.getStyleClass().contains("badge"));
-            tabsWrapper.getChildren().add(badge);
+        if (count <= 0) {
+            inboxBadgeLabel.setVisible(false);
+            inboxBadgeLabel.setManaged(false);
         } else {
-            tabsWrapper.getChildren().removeIf(n -> n.getStyleClass().contains("badge"));
+            inboxBadgeLabel.setText(String.valueOf(count));
+            inboxBadgeLabel.setVisible(true);
+            inboxBadgeLabel.setManaged(true);
         }
     }
 

@@ -119,6 +119,21 @@ public class ChatWindow {
         lblSubjectKey.getStyleClass().add("chat-header-line");
         lblSubjectValue.getStyleClass().addAll("chat-header-line", "chat-header-value");
 
+        // Establecemos aquí mismo la fecha real del mensaje en el encabezado:
+        DateTimeFormatter fmtFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        lblDateKey.setText(b.getString("chat.header.date"));
+        if (mensaje.getFechaHora() != null) {
+            lblDateValue.setText(mensaje.getFechaHora().format(fmtFecha));
+        } else {
+            lblDateValue.setText(LocalDateTime.now().format(fmtFecha));
+        }
+
+        lblSenderKey.setText(b.getString("chat.header.from"));
+        lblSenderValue.setText(mensaje.getSender());
+
+        lblSubjectKey.setText(b.getString("chat.header.subject"));
+        lblSubjectValue.setText(mensaje.getAsunto());
+
         HBox dateBox = new HBox(4, lblDateKey, lblDateValue);
         HBox senderBox = new HBox(4, lblSenderKey, lblSenderValue);
         HBox subjectBox = new HBox(4, lblSubjectKey, lblSubjectValue);
@@ -131,8 +146,8 @@ public class ChatWindow {
         chatArea = new VBox(10);
         chatArea.setPadding(new Insets(10));
 
-        // Agregar el mensaje inicial (del remitente)
-        addMessageToChat(mensaje.getSender(), mensaje.getContent(), false);
+        // Agregar el mensaje inicial (del remitente) usando la fecha/hora real:
+        addMessageToChat(mensaje.getSender(), mensaje.getContent(), false, mensaje.getFechaHora());
 
         chatScrollPane = new ScrollPane(chatArea);
         chatScrollPane.setFitToWidth(true);
@@ -310,19 +325,25 @@ public class ChatWindow {
         stage.show();
     }
 
-
     /* =================================================================================== */
     /*                              REFRESCO DE TEXTOS                                    */
     /* =================================================================================== */
     private void refreshTexts() {
         ResourceBundle b = LocaleManager.bundle();
 
+        // — TÍTULO DE LA VENTANA —
         stage.setTitle(MessageFormat.format(b.getString("chat.window.title"), mensaje.getSender()));
 
+        // — ENCABEZADO: FECHA, REMITENTE Y ASUNTO —
         lblDateKey.setText(b.getString("chat.header.date"));
-        // SOLO FECHA, SIN HORA - Formato dd/MM/yyyy
+
+        // En lugar de "LocalDateTime.now()", usamos mensaje.getFechaHora():
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        lblDateValue.setText(LocalDateTime.now().format(fmt)); // Cambiado a solo fecha
+        if (mensaje.getFechaHora() != null) {
+            lblDateValue.setText(mensaje.getFechaHora().format(fmt));
+        } else {
+            lblDateValue.setText(LocalDateTime.now().format(fmt));
+        }
 
         lblSenderKey.setText(b.getString("chat.header.from"));
         lblSenderValue.setText(mensaje.getSender());
@@ -330,14 +351,16 @@ public class ChatWindow {
         lblSubjectKey.setText(b.getString("chat.header.subject"));
         lblSubjectValue.setText(mensaje.getAsunto());
 
+        // — CAJA DE TEXTO Y BOTONES —
         txtReply.setPromptText(b.getString("chat.prompt.reply"));
         btnSend.setText(b.getString("chat.button.send"));
         btnClose.setText(b.getString("chat.button.cancel"));
 
-        /* controles añadidos */
+        // — ESTADO DE CIFRADO, TEMPORIZADOR Y ADJUNTOS —
         lblEncryptState.setText(b.getString(encrypt ? "chat.encrypt.on" : "chat.encrypt.off"));
         miTimerOff.setText(b.getString("chat.timer.off"));
         btnResponder.setText(b.getString("chat.button.reply"));
+
         if (timerSelection.isEmpty()) {
             lblTimerState.setText(b.getString("chat.timer.off"));
         } else {
@@ -351,16 +374,20 @@ public class ChatWindow {
         }
     }
 
+
     /* =================================================================================== */
     /*                              GESTIÓN DE MENSAJES EN CHAT                          */
     /* =================================================================================== */
-    private void addMessageToChat(String sender, String content, boolean isCurrentUser) {
+    private void addMessageToChat(String sender, String content, boolean isCurrentUser, LocalDateTime fechaHoraMensaje) {
         // Contenedor principal del mensaje (hora + rectángulo)
         VBox messageWithTime = new VBox(2); // Espacio vertical entre hora y mensaje
         messageWithTime.setMaxWidth(500);
 
         // Hora del mensaje (justo encima del rectángulo)
-        Label timeLabel = new Label(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+        DateTimeFormatter horaFmt = DateTimeFormatter.ofPattern("HH:mm");
+        String horaParaMostrar = (fechaHoraMensaje != null) ? fechaHoraMensaje.format(horaFmt) : LocalDateTime.now().format(horaFmt);
+
+        Label timeLabel = new Label(horaParaMostrar);
         timeLabel.getStyleClass().add("chat-time-label");
         HBox timeContainer = new HBox();
         timeContainer.getChildren().add(timeLabel);
@@ -400,9 +427,7 @@ public class ChatWindow {
         chatArea.getChildren().add(messageRow);
 
         // Scroll automático al último mensaje
-        Platform.runLater(() -> {
-            chatScrollPane.setVvalue(1.0);
-        });
+        Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
     }
 
     /* =================================================================================== */
@@ -487,7 +512,7 @@ public class ChatWindow {
 
                                 // Agregar el mensaje enviado al chat
                                 if (!plainText.isEmpty()) {
-                                    addMessageToChat(currentUser, plainText, true);
+                                    addMessageToChat(currentUser, plainText, true, LocalDateTime.now());
                                 }
 
                                 // Limpiar el área de texto y archivos seleccionados

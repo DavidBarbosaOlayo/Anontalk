@@ -360,21 +360,19 @@
 
 
 /* Filas leídas: fondo más tenue, icono de papelera sin cambios */
-.bandeja-tabla .table-row-cell:even.read-row {
-    -fx-background-color: #181a1b;  /* más oscuro que #202124 */
+.bandeja-tabla .table-row-cell.read-row {
+    -fx-background-color: derive(-fx-background, -75%);
 }
-.bandeja-tabla .table-row-cell:odd.read-row {
-    -fx-background-color: #252627;  /* más oscuro que #2c2c2c */
-}
-
 
 /* Para que sólo afecte al fondo, no al contenido */
 .bandeja-tabla .table-row-cell.read-row .table-cell {
     /* no cambiamos la opacidad de celdas ni de botones */
 }
+
 .inbox-tabs .tab-header-area,
 .inbox-tabs .tab-header-area .headers-region {
     /* por defecto JavaFX lo recorta, con esto permitimos que los children
        se dibujen fuera de su propia región */
     -fx-overflow: visible;
 }
+
