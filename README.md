@@ -1,8 +1,8 @@
-Anontalk: Aplicación de Mensajería Anónima y Segura
+**Anontalk: Aplicación de Mensajería Anónima y Segura**
 
 Anontalk es una aplicación de escritorio centrada en la privacidad del usuario. Su objetivo principal es garantizar que solo el remitente y el destinatario puedan leer los mensajes, utilizando para ello un esquema de cifrado de extremo a extremo basado en criptografía híbrida.
 
-🚀 Características principales
+**🚀 Características principales**
 
 Cifrado híbrido: AES-GCM (256 bits) + RSA-OAEP (2048 bits)
 
@@ -20,7 +20,7 @@ Exportación de clave pública desde el perfil
 
 Adjuntos cifrados, descifrados localmente
 
-🌐 Tecnologías utilizadas
+**🌐 Tecnologías utilizadas**
 
 Java 21 + JavaFX para la interfaz de escritorio
 
@@ -34,7 +34,7 @@ Spring Mail para tokens de recuperación
 
 GitHub para control de versiones
 
-🔒 Seguridad
+**🔒 Seguridad**
 
 Todas las claves privadas permanecen cifradas y locales
 
@@ -46,7 +46,7 @@ Preparado para operar sobre HTTPS (en producción)
 
 El servidor actúa solo como transportista de bloques cifrados
 
-🏙️ Arquitectura
+**🏙️ Arquitectura**
 
 Cliente ligero en JavaFX (UI reactiva, multitema, i18n)
 
@@ -56,51 +56,29 @@ Polling HTTP cada 5s simula un "chat en vivo"
 
 Base de datos PostgreSQL cifrada (solo almacena Base64)
 
-📆 Estado del proyecto
+**📆 Estado del proyecto**
 
 Versión actual: v1.3.4-dev
 
 Este repositorio contiene la última versión de desarrollo del proyecto. Aunque funcional, algunas mejoras como WebSockets, soporte Tor o chat grupal están previstas para futuras versiones.
 
-🔧 Instalación
 
-Clonar el repositorio:git clone https://github.com/DavidBarbosaOlayo/Anontalk.git
+**📖 Documentación**
 
-Configurar la base de datos PostgreSQL (en Render u otro proveedor):
+Manual de Usuario (DOC)
+https://docs.google.com/document/d/1LNDnhEb9L-vfvGvCEF2dujKigd9hSdvx8OtXclJbduM/edit?tab=t.0#heading=h.1z3q2ffncq9
 
-Crear la BD y obtener URL JDBC
-
-Establecer las variables de entorno necesarias
-
-Backend (Spring Boot):
-
-Requisitos: Java 21, Maven
-
-Ejecutar: mvn spring-boot:run
-
-Cliente (JavaFX):
-
-Asegurar dependencias JavaFX estén en el classpath
-
-Ejecutar desde tu IDE o crear un .jar ejecutable
-
-📖 Documentación
-
-Manual de Usuario (PDF)
-
-Memoria del Proyecto (PDF)
+Memoria del Proyecto (DOC)
+https://docs.google.com/document/d/1Rez2gmvXu3U_URuqUqwqEFAfjzP--UPABKYDJlvEplw/edit?tab=t.0
 
 Diagrama de arquitectura, flujo de cifrado, estructura de carpetas, etc.
 
-🚧 Roadmap
 
-
-
-✊ Filosofía del proyecto
+**✊ Filosofía del proyecto**
 
 Anontalk nace como una reivindicación de la privacidad digital: una herramienta construida desde cero para devolver al usuario el control total sobre sus comunicaciones. Su modelo de "Security by Design" elimina intermediarios de confianza, aplica cifrado robusto en origen y asegura que ningún tercero pueda acceder a los datos.
 
-✉️ Contacto
+**✉️ Contacto**
 
 Autores: David Barbosa Olayo, Marc Mancilla Pontejo
 
