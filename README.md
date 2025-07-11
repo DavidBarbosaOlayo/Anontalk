@@ -1,4 +1,4 @@
-**Anontalk: Aplicación de Mensajería Anónima y Segura**
+**Anontalk: Aplicación de Mensajería Anónima y Segura** (Servidor desconectado actualmente)
 
 Anontalk es una aplicación de escritorio centrada en la privacidad del usuario. Su objetivo principal es garantizar que solo el remitente y el destinatario puedan leer los mensajes, utilizando para ello un esquema de cifrado de extremo a extremo basado en criptografía híbrida.
 
